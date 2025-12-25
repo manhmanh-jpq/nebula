@@ -1,240 +1,72 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Nebula Studio - Record & Capture</title>
+    <meta charset="utf-8">
+    <title>Nebula Studio - Final Fix</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Inter', sans-serif; color: white; }
-        canvas { display: block; }
-        
-        #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%); 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
-        }
-
-        #ui-panel {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(20px);
-            padding: 20px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 10; width: 220px;
-        }
-
-        .action-bar {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 15px; z-index: 20;
-        }
-
-        .btn-action {
-            padding: 12px 20px; border-radius: 25px; border: none; cursor: pointer;
-            font-weight: 600; color: white; transition: 0.3s; display: flex; align-items: center; gap: 8px;
-        }
-
-        #btn-capture { background: #333; }
-        #btn-record { background: #ff4757; }
-        #btn-record.recording { animation: pulse 1.5s infinite; background: #ff0000; }
-
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        .video-feed {
-            position: absolute; top: 20px; right: 20px; width: 160px; height: 120px;
-            border-radius: 10px; overflow: hidden; border: 1px solid #444; transform: scaleX(-1);
-        }
-
-        input[type="color"] { width: 100%; height: 25px; border: none; background: none; cursor: pointer; }
-        label { font-size: 10px; text-transform: uppercase; opacity: 0.5; margin-top: 10px; display: block; }
-        button#startBtn { padding: 15px 40px; border-radius: 30px; background: #00d4ff; border: none; color: black; font-weight: bold; cursor: pointer; }
+        body { margin: 0; background: #000; overflow: hidden; }
+        #webcam { position: absolute; top: 10px; right: 10px; width: 220px; z-index: 10; transform: scaleX(-1); border: 2px solid #00ffff; border-radius: 8px; }
     </style>
 </head>
 <body>
-
-    <div id="overlay">
-        <h1 style="letter-spacing: 5px;">NEBULA STUDIO</h1>
-        <button id="startBtn">BẮT ĐẦU TRẢI NGHIỆM</button>
-    </div>
-
-    <div id="ui-panel">
-        <label>Màu lõi</label>
-        <input type="color" id="colorInner" value="#00ffff">
-        <label>Màu bùng nổ</label>
-        <input type="color" id="colorOuter" value="#ff00ff">
-        <div id="status" style="margin-top:15px; font-size:11px; color:#00ff88;">Sẵn sàng</div>
-    </div>
-
-    <div class="action-bar">
-        <button id="btn-capture" class="btn-action">📸 CHỤP ẢNH</button>
-        <button id="btn-record" class="btn-action">⏺ QUAY VIDEO</button>
-    </div>
-
-    <div class="video-feed">
-        <video id="webcam" autoplay playsinline></video>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-
+    <video id="webcam" autoplay playsinline style="display:none"></video>
+    <canvas id="output_canvas" style="position:absolute; top:10px; right:10px; width:220px; transform:scaleX(-1); border:2px solid #0ff; z-index:100; border-radius:8px;"></canvas>
+    
     <script>
-        let audioContext, analyser, dataArray, mediaRecorder, recordedChunks = [];
-        let expansion = 0, targetExpansion = 0, audioFreq = 0;
+        let scene, camera, renderer, particles;
+        let expansion = 0, targetExpansion = 0;
 
-        // --- KHỞI TẠO THREE.JS ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); // Quan trọng để chụp ảnh
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+
+        // KHỞI TẠO ĐỒ HỌA
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
-        camera.position.z = 5;
 
-        const particleCount = 12000;
-        const geometry = new THREE.BufferGeometry();
-        const pos = new Float32Array(particleCount * 3);
-        const basePos = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
+        const geo = new THREE.BufferGeometry();
+        const pts = new Float32Array(15000 * 3);
+        for(let i=0; i<45000; i++) pts[i] = (Math.random() - 0.5) * 6;
+        geo.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+        particles = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x00ffff, size: 0.02 }));
+        scene.add(particles);
 
-        for (let i = 0; i < particleCount; i++) {
-            const phi = Math.acos(-1 + (2 * i) / particleCount);
-            const theta = Math.sqrt(particleCount * Math.PI) * phi;
-            pos[i*3] = basePos[i*3] = Math.sin(phi) * Math.cos(theta);
-            pos[i*3+1] = basePos[i*3+1] = Math.sin(phi) * Math.sin(theta);
-            pos[i*3+2] = basePos[i*3+2] = Math.cos(phi);
-        }
-        geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        const material = new THREE.PointsMaterial({ size: 0.012, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true });
-        const points = new THREE.Points(geometry, material);
-        scene.add(points);
-
-        // --- CAMERA & HANDS ---
-        const hands = new Hands({
-            locateFile: (file) => {
-                
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-            }
-        });
-
-        hands.setOptions({
-            maxNumHands: 2,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-        hands.setOptions({ maxNumHands: 2, minDetectionConfidence: 0.6 });
-        hands.onResults(results => {
-            
+        // KHỞI TẠO AI HANDS
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5});
+        
+        hands.onResults((results) => {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
             if (results.multiHandLandmarks && results.multiHandLandmarks.length === 2) {
                 const h1 = results.multiHandLandmarks[0][9];
                 const h2 = results.multiHandLandmarks[1][9];
-                
-                const dist = Math.sqrt(Math.pow(h1.x - h2.x, 2) + Math.pow(h1.y - h2.y, 2));
-                
-                targetExpansion = (dist - 0.1) * 25; 
-                
-                console.log("Khoảng cách tay:", targetExpansion); 
-                
-                statusPill.innerText = "Hệ thống: ACTIVE";
-            } else {
-                targetExpansion = 0;
-                statusPill.innerText = "Đang tìm 2 bàn tay...";
-            }
+                const d = Math.sqrt(Math.pow(h1.x-h2.x,2) + Math.pow(h1.y-h2.y,2));
+                targetExpansion = d * 10; 
+            } else { targetExpansion = 0; }
         });
 
-        const videoElement = document.getElementById('webcam');
-        
         const cameraUtils = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({image: videoElement});
-            },
-            width: 640,
-            height: 360
+            onFrame: async () => { await hands.send({image: videoElement}); },
+            width: 640, height: 480
         });
         cameraUtils.start();
 
-        videoElement.style.objectFit = "contain"; 
-        videoElement.style.width = "100%";
-        videoElement.style.height = "100%";
-        videoElement.style.backgroundColor = "black";
-
-        // --- CHỨC NĂNG CHỤP & QUAY ---
-        document.getElementById('btn-capture').onclick = () => {
-            const link = document.createElement('a');
-            link.download = 'nebula-capture.png';
-            link.href = renderer.domElement.toDataURL('image/png');
-            link.click();
-        };
-
-        const recordBtn = document.getElementById('btn-record');
-        recordBtn.onclick = () => {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                recordBtn.innerText = "⏺ QUAY VIDEO";
-                recordBtn.classList.remove('recording');
-            } else {
-                recordedChunks = [];
-                const stream = renderer.domElement.captureStream(30);
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'nebula-video.webm'; a.click();
-                };
-                mediaRecorder.start();
-                recordBtn.innerText = "⏹ DỪNG QUAY";
-                recordBtn.classList.add('recording');
-            }
-        };
-
-        // --- START ---
-        document.getElementById('startBtn').onclick = async () => {
-            document.getElementById('overlay').style.display = 'none';
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioContext = new AudioContext();
-            const source = audioContext.createMediaStreamSource(stream);
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            cameraUtils.start();
-            animate();
-        };
-
         function animate() {
-            requestAnimationFrame(animate);
-            if (analyser) {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; for(let i=0; i<10; i++) sum += dataArray[i];
-                audioFreq = sum / 10 / 255;
-            }
             expansion += (targetExpansion - expansion) * 0.1;
-            const c1 = new THREE.Color(document.getElementById('colorInner').value);
-            const c2 = new THREE.Color(document.getElementById('colorOuter').value);
-            const posArr = geometry.attributes.position.array;
-            const colArr = geometry.attributes.color.array;
-
-            for (let i = 0; i < particleCount; i++) {
-                const factor = 1 + (expansion * 5.0) + (audioFreq * 0.1); 
-                
-                const shake = audioFreq * 0.02 * Math.sin(Date.now() * 0.01 + i);
-
-                posArr[i*3] = basePos[i*3] * (factor + shake);
-                posArr[i*3+1] = basePos[i*3+1] * (factor + shake);
-                posArr[i*3+2] = basePos[i*3+2] * (factor + shake);
-
-                const mix = c1.clone().lerp(c2, Math.min(1, expansion / 2));
-                colArr[i*3] = mix.r; 
-                colArr[i*3+1] = mix.g; 
-                colArr[i*3+2] = mix.b;
-            }
-            geometry.attributes.position.needsUpdate = true;
-            geometry.attributes.color.needsUpdate = true;
-            points.rotation.y += 0.002 + (audioFreq * 0.04);
+            particles.scale.set(1 + expansion, 1 + expansion, 1 + expansion);
+            particles.rotation.y += 0.002;
             renderer.render(scene, camera);
+            requestAnimationFrame(animate);
         }
+        animate();
     </script>
 </body>
-
 </html>
