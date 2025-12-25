@@ -10,15 +10,13 @@
         body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
         #canvas-container { position: absolute; width: 100%; height: 100%; z-index: 1; }
         
-        /* Màn hình nhỏ góc phải - BẮT BUỘC HIỆN */
         #pip-container { 
-            position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; 
+            position: absolute; bottom: 20px; right: 20px; width: 220px; height: 160px; 
             border: 3px solid #ff0000; border-radius: 15px; overflow: hidden; z-index: 1000;
             background: #222; box-shadow: 0 0 20px rgba(255,0,0,0.5);
         }
         #pip-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 
-        /* Chú thích đúng 2 cái bạn yêu cầu */
         #guide { 
             position: absolute; top: 20px; left: 20px; z-index: 100; 
             background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 10px;
@@ -26,7 +24,6 @@
         }
         .line { margin: 5px 0; font-size: 14px; font-weight: bold; }
 
-        /* Giao diện nút bấm dưới cùng */
         #controls { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
             z-index: 100; display: flex; gap: 20px; 
@@ -36,7 +33,6 @@
             font-weight: 900; background: white; transition: 0.3s;
         }
 
-        /* Bộ chọn màu */
         #colors { 
             position: absolute; top: 20px; right: 20px; z-index: 100; 
             background: rgba(0,0,0,0.8); padding: 10px; border-radius: 10px; color: white;
@@ -79,33 +75,33 @@
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 3000);
             camera.position.z = 800;
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             geo = new THREE.BufferGeometry();
-            const positions = new Float32Array(20000 * 3);
-            const colors = new Float32Array(20000 * 3);
+            const positions = new Float32Array(25000 * 3);
+            const colors = new Float32Array(25000 * 3);
             geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-            // Tạo hạt tròn xịn bằng Shader
+            const circleTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/circle.png');
             const mat = new THREE.PointsMaterial({
                 size: 6, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending,
-                map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/circle.png')
+                map: circleTexture, depthWrite: false
             });
 
             pts = new THREE.Points(geo, mat);
             scene.add(pts);
 
-            // Chữ nằm trong lõi
             const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 128;
+            canvas.width = 1024; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.font = "bold 40px Arial"; ctx.fillStyle = "white"; ctx.textAlign = "center";
+            ctx.font = "bold 60px Arial"; ctx.fillStyle = "white"; ctx.textAlign = "center";
             const tex = new THREE.CanvasTexture(canvas);
             textSprite = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, transparent: true}));
-            textSprite.scale.set(400, 100, 1);
+            textSprite.scale.set(600, 150, 1);
+            textSprite.position.set(0, 0, 0);
             scene.add(textSprite);
 
             drawTree();
@@ -116,24 +112,24 @@
         function drawTree() {
             const pos = geo.attributes.position.array;
             const col = geo.attributes.color.array;
-            const c = [0,1,2,3,4,5,6].map(i => new THREE.Color(document.getElementById('c'+i).value));
+            const colors = [0,1,2,3,4,5,6].map(i => new THREE.Color(document.getElementById('c'+i).value));
 
-            for(let i=0; i<20000; i++) {
+            for(let i=0; i<25000; i++) {
                 let x,y,z, clr;
                 const r = Math.random();
-                if(r > 0.15) { // Tầng lá
+                if(r > 0.15) { 
                     const t = Math.floor(Math.random()*5);
-                    const h = -200 + t*80 + Math.random()*80;
-                    const rad = (400 - (h+200)) * 0.4 * Math.random();
+                    const h = -220 + t*85 + Math.random()*85;
+                    const rad = (450 - (h+220)) * 0.42 * Math.random();
                     const a = Math.random() * Math.PI * 2;
                     x = Math.cos(a)*rad; y = h; z = Math.sin(a)*rad;
-                    clr = c[t+1];
-                } else if(r > 0.05) { // Gốc
-                    x = (Math.random()-0.5)*50; y = -250-Math.random()*50; z = (Math.random()-0.5)*50;
-                    clr = c[6];
-                } else { // Sao
-                    x = (Math.random()-0.5)*40; y = 220+Math.random()*40; z = (Math.random()-0.5)*40;
-                    clr = c[0];
+                    clr = colors[t+1];
+                } else if(r > 0.05) { 
+                    x = (Math.random()-0.5)*55; y = -280-Math.random()*60; z = (Math.random()-0.5)*55;
+                    clr = colors[6];
+                } else { 
+                    x = (Math.random()-0.5)*45; y = 240+Math.random()*50; z = (Math.random()-0.5)*45;
+                    clr = colors[0];
                 }
                 pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
                 col[i*3]=clr.r; col[i*3+1]=clr.g; col[i*3+2]=clr.b;
@@ -144,33 +140,36 @@
 
         function drawHeart() {
             const pos = geo.attributes.position.array;
-            for(let i=0; i<20000; i++) {
+            const col = geo.attributes.color.array;
+            for(let i=0; i<25000; i++) {
                 const t = Math.random()*Math.PI*2;
                 const p = Math.random()*Math.PI;
-                const r = 18 + Math.random()*2; // Tạo độ dày khối 3D
+                const r = 20 + Math.random()*3; 
                 pos[i*3] = r * 16 * Math.pow(Math.sin(t), 3) * Math.sin(p);
                 pos[i*3+1] = r * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * Math.sin(p);
-                pos[i*3+2] = r * 10 * Math.cos(p);
+                pos[i*3+2] = r * 10 * Math.cos(p) * Math.sin(p);
+                col[i*3]=1; col[i*3+1]=0; col[i*3+2]=0;
             }
             geo.attributes.position.needsUpdate = true;
+            geo.attributes.color.needsUpdate = true;
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            sRot += (rotY - sRot) * 0.05;
-            sZoom += (zoom - sZoom) * 0.05;
+            sRot += (rotY - sRot) * 0.04;
+            sZoom += (zoom - sZoom) * 0.04;
             pts.rotation.y = sRot;
-            camera.position.z = 800 - (sZoom - 1) * 1500;
+            camera.position.z = 800 - (sZoom - 1) * 1600;
 
             const ctx = textSprite.material.map.image.getContext('2d');
-            ctx.clearRect(0,0,512,128);
-            if(camera.position.z < 50 && state === "TREE") {
-                ctx.fillText("làm trái tim đi sẽ có bất ngờ", 256, 64);
-                textSprite.material.opacity = 1;
+            ctx.clearRect(0,0,1024,256);
+            if(camera.position.z < 20 && state === "TREE") {
+                ctx.fillText("làm trái tim đi sẽ có bất ngờ", 512, 128);
+                textSprite.material.opacity = 0.9;
             } else if(state === "HEART") {
-                ctx.fillText("tao chưa có quà ^ ^", 256, 64);
-                textSprite.material.opacity = 1;
-                pts.rotation.y += 0.02;
+                ctx.fillText("tao chưa có quà ^ ^", 512, 128);
+                textSprite.material.opacity = 0.9;
+                pts.rotation.y += 0.015;
             } else { textSprite.material.opacity = 0; }
             textSprite.material.map.needsUpdate = true;
 
@@ -183,10 +182,10 @@
             hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.8});
             hands.onResults(res => {
                 if(res.multiHandLandmarks.length === 1) {
-                    rotY = (res.multiHandLandmarks[0][8].x - 0.5) * 4;
+                    rotY = (res.multiHandLandmarks[0][8].x - 0.5) * 4.5;
                 } else if(res.multiHandLandmarks.length === 2) {
                     const h1 = res.multiHandLandmarks[0], h2 = res.multiHandLandmarks[1];
-                    zoom = Math.max(1, Math.hypot(h1[9].x - h2[9].x, h1[9].y - h2[9].y) * 5);
+                    zoom = Math.max(1, Math.hypot(h1[9].x - h2[9].x, h1[9].y - h2[9].y) * 5.5);
                     const d1 = Math.hypot(h1[4].x - h2[4].x, h1[4].y - h2[4].y);
                     const d2 = Math.hypot(h1[8].x - h2[8].x, h1[8].y - h2[8].y);
                     if(d1 < 0.05 && d2 < 0.05 && state === "TREE") {
@@ -200,9 +199,11 @@
         }
 
         function capture() {
-            const a = document.createElement('a');
-            a.href = renderer.domElement.toDataURL();
-            a.download = 'selfie.png'; a.click();
+            const canvas = renderer.domElement;
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL("image/png");
+            link.download = 'xmas_selfie_babe.png';
+            link.click();
         }
 
         document.querySelectorAll('input').forEach(i => i.onchange = drawTree);
