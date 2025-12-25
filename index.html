@@ -3,238 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xmas Pro Interactive - 2025</title>
+    <title>Xmas Spherical Pro - Interactive</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050505; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #video-container { position: absolute; width: 100%; height: 100%; z-index: 0; opacity: 0.4; transform: scaleX(-1); display: none;}
+        #video-container { position: absolute; width: 100%; height: 100%; z-index: 0; opacity: 0.3; transform: scaleX(-1); display: none; }
         
-        /* Chú thích tính năng */
-        #help-panel { position: absolute; top: 20px; left: 20px; z-index: 20; background: rgba(0,0,0,0.8); border: 1px solid #00ff44; padding: 15px; border-radius: 12px; color: white; width: 280px; font-size: 13px; line-height: 1.6; }
-        #help-panel h4 { margin: 0 0 10px 0; color: #00ff44; display: flex; align-items: center; gap: 8px; }
-        .feature-item { margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
-        .feature-item i { color: #ffd700; margin-top: 3px; }
+        #help-panel { position: absolute; top: 20px; left: 20px; z-index: 20; background: rgba(0,0,0,0.85); border-left: 4px solid #ff0000; padding: 20px; border-radius: 8px; color: white; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .help-title { color: #ff0000; font-weight: bold; margin-bottom: 12px; font-size: 16px; text-transform: uppercase; }
+        .help-item { margin-bottom: 10px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
 
-        /* Giao diện nút bấm */
-        #ui-layer { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 15px; }
-        .btn { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 12px 20px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 13px; transition: 0.3s; }
-        .btn:hover { background: #ff4757; transform: translateY(-3px); }
+        #ui-layer { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 20px; }
+        .btn { background: linear-gradient(135deg, #ff4757, #ff6b81); border: none; color: white; padding: 15px 25px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: bold; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); transition: 0.3s; }
+        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
 
-        /* Bộ chọn màu */
-        #color-picker { position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 15px; color: white; border: 1px solid #444; }
-        .cp-row { margin: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 15px; font-size: 12px; }
-        input[type="color"] { border: none; width: 24px; height: 24px; cursor: pointer; background: none; }
+        #color-picker { position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(255,255,255,0.05); backdrop-filter: blur(15px); padding: 15px; border-radius: 20px; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .cp-row { margin: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; }
+        input[type="color"] { border: none; width: 28px; height: 28px; cursor: pointer; background: none; border-radius: 50%; }
 
-        /* Thông báo */
-        #msg-xmas, #msg-no-gift { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; opacity: 0; pointer-events: none; z-index: 5; transition: 0.5s; font-weight: 900; }
-        #msg-xmas { font-size: 60px; text-shadow: 0 0 20px #00ff00; }
-        #msg-no-gift { font-size: 50px; text-shadow: 0 0 20px #ff0000; color: #ff4757; }
+        /* Messages */
+        #msg-xmas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 45px; font-weight: 800; opacity: 0; transition: 1s; z-index: 5; text-align: center; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        #msg-no-gift { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff4d4d; font-size: 55px; font-weight: 900; opacity: 0; transition: 0.5s; z-index: 6; text-shadow: 0 0 30px rgba(255,0,0,0.8); }
         
-        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; align-items: center; justify-content: center; }
-        #rec-indicator { position: absolute; top: 20px; left: 320px; color: red; font-weight: bold; display: none; z-index: 10; align-items: center; gap: 5px; }
-        .dot { width: 10px; height: 10px; background: red; border-radius: 50%; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; }
+        #rec-indicator { position: absolute; top: 25px; left: 350px; color: #ff0000; font-weight: bold; display: none; z-index: 10; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
 
     <div id="help-panel">
-        <h4><i class="fas fa-magic"></i> HƯỚNG DẪN TRẢI NGHIỆM</h4>
-        <div class="feature-item"><i class="fas fa-hand-paper"></i> <span><b>1 Bàn tay:</b> Di chuyển để xoay cây thông 360°.</span></div>
-        <div class="feature-item"><i class="fas fa-hands"></i> <span><b>2 Bàn tay:</b> Kéo rộng để "bay" vào lõi cây thông.</span></div>
-        <div class="feature-item"><i class="fas fa-heart"></i> <span><b>Chạm 2 tay:</b> Tạo hình trái tim để nổ tung cảm xúc.</span></div>
-        <div class="feature-item"><i class="fas fa-palette"></i> <span><b>Cá nhân hóa:</b> Tự chọn màu cho 5 tầng lá riêng biệt.</span></div>
+        <div class="help-title">Điều khiển cử chỉ</div>
+        <div class="help-item"><i class="fas fa-hand-pointer"></i> 1 bàn tay để xoay cây thông 360°</div>
+        <div class="help-item"><i class="fas fa-arrows-alt-h"></i> 2 bàn tay kéo rộng để xem bất ngờ</div>
+        <div class="help-title" style="margin-top:15px; color:#ffd700;">Tùy chỉnh màu</div>
+        <div class="help-item"><i class="fas fa-star"></i> Đổi màu ngôi sao & 5 tầng lá</div>
     </div>
 
     <div id="video-container"><video id="webcam" autoplay playsinline></video></div>
     <div id="canvas-container"></div>
-    <div id="msg-xmas">Merry Christmas!</div>
+    <div id="msg-xmas">làm trái tim đi sẽ có bất ngờ</div>
     <div id="msg-no-gift">tao chưa có quà ^ ^</div>
-    <div id="rec-indicator"><div class="dot"></div> ĐANG QUAY PHIM</div>
+    <div id="rec-indicator"><span style="width:10px; height:10px; background:red; border-radius:50%; display:inline-block;"></span> REC</div>
 
     <div id="ui-layer">
-        <button class="btn" onclick="takePhoto()"><i class="fas fa-camera"></i> ẤN VÀO ĐÂY ĐỂ SELFI NHÓ BABE</button>
-        <button class="btn" onclick="showRecModal()"><i class="fas fa-video"></i> Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ</button>
+        <button class="btn" onclick="takePhoto()"><i class="fas fa-camera"></i> ẤN VÀO ĐÊ ĐỂ SELFI NHÓ BABE</button>
+        <button class="btn" onclick="showRecModal()"><i class="fas fa-microphone"></i> Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ</button>
     </div>
 
     <div id="color-picker">
-        <div style="text-align:center; margin-bottom:10px; font-weight:bold; font-size:14px;">MÀU CÂY THÔNG</div>
-        <div class="cp-row">Tầng lá 1 <input type="color" id="c1" value="#004d00" onchange="updateTree()"></div>
-        <div class="cp-row">Tầng lá 2 <input type="color" id="c2" value="#006400" onchange="updateTree()"></div>
-        <div class="cp-row">Tầng lá 3 <input type="color" id="c3" value="#008000" onchange="updateTree()"></div>
-        <div class="cp-row">Tầng lá 4 <input type="color" id="c4" value="#228b22" onchange="updateTree()"></div>
-        <div class="cp-row">Tầng lá 5 <input type="color" id="c5" value="#32cd32" onchange="updateTree()"></div>
-        <hr style="border:0.5px solid #444">
-        <div class="cp-row">Gốc cây <input type="color" id="ctrunk" value="#5d2906" onchange="updateTree()"></div>
+        <div class="cp-row">Ngôi sao <input type="color" id="cStar" value="#ffff00" onchange="updateColors()"></div>
+        <div class="cp-row">Tầng lá 1 <input type="color" id="c1" value="#004d00" onchange="updateColors()"></div>
+        <div class="cp-row">Tầng lá 2 <input type="color" id="c2" value="#006400" onchange="updateColors()"></div>
+        <div class="cp-row">Tầng lá 3 <input type="color" id="c3" value="#008000" onchange="updateColors()"></div>
+        <div class="cp-row">Tầng lá 4 <input type="color" id="c4" value="#228b22" onchange="updateColors()"></div>
+        <div class="cp-row">Tầng lá 5 <input type="color" id="c5" value="#32cd32" onchange="updateColors()"></div>
+        <div class="cp-row">Gốc cây <input type="color" id="cTrunk" value="#5d2906" onchange="updateColors()"></div>
     </div>
 
     <div id="modal">
-        <div style="background:#111; padding:40px; border-radius:25px; text-align:center; border:2px solid #ff4757; max-width: 300px;">
-            <h3 style="color:white; margin-bottom:25px;">CHẾ ĐỘ QUAY</h3>
-            <button class="btn" style="width:100%; margin-bottom:15px;" onclick="startRec(true)">CÓ HIỆN MẶT BABE</button>
-            <button class="btn" style="width:100%; margin-bottom:15px;" onclick="startRec(false)">CHỈ QUAY CÂY THÔNG</button>
-            <button class="btn" style="width:100%; background:#333;" onclick="hideModal()">ĐÓNG</button>
-        </div>
-    </div>
-
-    <script>
-        let scene, camera, renderer, particleSystem, particles;
-        const pCount = 20000;
-        let zoom = 1, targetRotY = 0, isHeart = false;
-        let mediaRecorder, chunks = [];
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        function playSfx(f, t='sine', d=0.1) {
-            let o=audioCtx.createOscillator(), g=audioCtx.createGain();
-            o.type=t; o.frequency.value=f; g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+d);
-            o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+d);
-        }
-
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 3000);
-            camera.position.z = 600;
-            renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer: true});
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-            particles = new THREE.BufferGeometry();
-            updateTree();
-            const mat = new THREE.PointsMaterial({size:3.5, vertexColors:true, transparent:true, opacity:0.85});
-            particleSystem = new THREE.Points(particles, mat);
-            scene.add(particleSystem);
-            loop();
-        }
-
-        function updateTree() {
-            const pos = new Float32Array(pCount * 3);
-            const cols = new Float32Array(pCount * 3);
-            const cPick = [document.getElementById('c1').value, document.getElementById('c2').value, document.getElementById('c3').value, document.getElementById('c4').value, document.getElementById('c5').value];
-            
-            for(let i=0; i<pCount; i++) {
-                let x,y,z, c;
-                if(isHeart) {
-                    const t = Math.random() * Math.PI * 2;
-                    x = 16 * Math.pow(Math.sin(t), 3) * (10 + Math.random()*20);
-                    y = (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * (10 + Math.random()*20);
-                    z = (Math.random()-0.5) * 150;
-                    c = new THREE.Color('#ff4757');
-                } else {
-                    const rType = Math.random();
-                    if(rType > 0.1) {
-                        const tier = Math.floor(Math.random()*5);
-                        const hRange = 65; 
-                        const hBase = -120 + (tier * hRange);
-                        const h = hBase + Math.random() * hRange;
-                        const radius = (280 - (h+120)) * 0.45 * Math.random();
-                        const angle = Math.random() * Math.PI * 2;
-                        x = Math.cos(angle) * radius; y = h; z = Math.sin(angle) * radius;
-                        c = new THREE.Color(cPick[tier]);
-                    } else {
-                        x = (Math.random()-0.5)*35; y = Math.random()*-80 - 200; z = (Math.random()-0.5)*35;
-                        c = new THREE.Color(document.getElementById('ctrunk').value);
-                    }
-                }
-                pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
-                cols[i*3]=c.r; cols[i*3+1]=c.g; cols[i*3+2]=c.b;
-            }
-            particles.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            particles.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-        }
-
-        function loop() {
-            requestAnimationFrame(loop);
-            particleSystem.rotation.y += (targetRotY - particleSystem.rotation.y) * 0.05;
-            const tz = 600 - (zoom - 1) * 1200;
-            camera.position.z += (tz - camera.position.z) * 0.1;
-
-            document.getElementById('msg-xmas').style.opacity = (camera.position.z < -100 && !isHeart) ? 1 : 0;
-            document.getElementById('msg-no-gift').style.opacity = isHeart ? 1 : 0;
-            
-            if(isHeart) {
-                const positions = particleSystem.geometry.attributes.position.array;
-                for(let i=0; i<pCount; i++) {
-                    positions[i*3] *= 1.015;
-                    positions[i*3+2] *= 1.015;
-                }
-                particleSystem.geometry.attributes.position.needsUpdate = true;
-            }
-            renderer.render(scene, camera);
-        }
-
-        async function setupAR() {
-            const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-            hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6});
-            hands.onResults(res => {
-                if(res.multiHandLandmarks.length === 1) {
-                    targetRotY += (res.multiHandLandmarks[0][8].x - 0.5) * 0.2;
-                } else if(res.multiHandLandmarks.length === 2) {
-                    const h1 = res.multiHandLandmarks[0], h2 = res.multiHandLandmarks[1];
-                    const d = Math.hypot(h1[9].x - h2[9].x, h1[9].y - h2[9].y);
-                    zoom = Math.max(1, d * 4);
-                    
-                    const distThumb = Math.hypot(h1[4].x - h2[4].x, h1[4].y - h2[4].y);
-                    const distIndex = Math.hypot(h1[8].x - h2[8].x, h1[8].y - h2[8].y);
-                    
-                    if(distThumb < 0.06 && distIndex < 0.06 && !isHeart) {
-                        isHeart = true; 
-                        playSfx(500, 'sine', 0.8); 
-                        updateTree();
-                        setTimeout(() => { isHeart = false; updateTree(); }, 5000);
-                    }
-                }
-            });
-            const cam = new Camera(document.getElementById('webcam'), {
-                onFrame: async () => { await hands.send({image: document.getElementById('webcam')}); },
-                width: 1280, height: 720
-            });
-            cam.start();
-        }
-
-        function takePhoto() {
-            playSfx(1000, 'square', 0.1);
-            const link = document.createElement('a');
-            link.download = 'xmas_selfie_babe.png';
-            link.href = renderer.domElement.toDataURL('image/png');
-            link.click();
-        }
-
-        function showRecModal() { document.getElementById('modal').style.display='flex'; }
-        function hideModal() { document.getElementById('modal').style.display='none'; }
-
-        async function startRec(face) {
-            hideModal();
-            document.getElementById('video-container').style.display = face ? 'block' : 'none';
-            document.getElementById('rec-indicator').style.display = 'flex';
-            const stream = renderer.domElement.captureStream(30);
-            try {
-                const mic = await navigator.mediaDevices.getUserMedia({audio:true});
-                mic.getTracks().forEach(t => stream.addTrack(t));
-            } catch(e) { console.log("Microphone not found"); }
-            
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = e => chunks.push(e.data);
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, {type:'video/webm'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href=url; a.download='xmas_video_babe.webm'; a.click();
-                chunks = []; document.getElementById('rec-indicator').style.display='none';
-            };
-            mediaRecorder.start();
-            setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 10000);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        init(); setupAR();
-    </script>
-</body>
-</html>
+        <div style="
