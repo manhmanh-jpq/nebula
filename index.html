@@ -2,67 +2,42 @@
 <html lang="vi">
 <head>
     <meta charset="utf-8">
-    <title>Xmas Magic - Bấy Bề Edition</title>
+    <title>Xmas Final - Bấy Bề</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
-        
-        /* Webcam View */
-        #webcam-container { position: absolute; top: 15px; right: 15px; width: 180px; border: 2px solid #00f2fe; border-radius: 12px; overflow: hidden; z-index: 10; box-shadow: 0 0 15px #00f2fe; }
-        #webcam { width: 100%; transform: scaleX(-1); display: block; }
-        
-        /* Bảng hướng dẫn sử dụng */
-        #manual { position: absolute; top: 15px; left: 15px; background: rgba(0, 0, 0, 0.8); padding: 15px; border-radius: 12px; border: 1px solid #ff0077; z-index: 100; max-width: 250px; font-size: 13px; line-height: 1.6; }
-        #manual h3 { margin: 0 0 10px 0; color: #ff0077; font-size: 16px; text-transform: uppercase; }
-        .guide-item { margin-bottom: 8px; display: flex; align-items: flex-start; gap: 8px; }
-        .icon { background: #333; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #00f2fe; }
-
-        /* Bộ chọn màu */
-        #controls { margin-top: 15px; border-top: 1px solid #333; pt: 10px; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
+        #webcam-container { position: absolute; top: 15px; right: 15px; width: 180px; border: 2px solid #00f2fe; border-radius: 12px; z-index: 10; box-shadow: 0 0 15px #00f2fe; }
+        #webcam { width: 100%; transform: scaleX(-1); display: block; border-radius: 10px; }
+        #manual { position: absolute; top: 15px; left: 15px; background: rgba(0, 0, 0, 0.85); padding: 15px; border-radius: 12px; border: 1px solid #ff0077; z-index: 100; width: 220px; font-size: 13px; }
+        #manual h3 { margin: 0 0 10px 0; color: #ff0077; font-size: 16px; text-align: center; }
+        .guide-item { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .icon { background: #333; padding: 2px 8px; border-radius: 4px; color: #00f2fe; font-weight: bold; min-width: 40px; text-align: center; }
         .color-row { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; }
-        input[type="color"] { border: none; width: 25px; height: 25px; cursor: pointer; background: none; }
-
-        /* Nút chức năng */
+        input[type="color"] { border: none; width: 22px; height: 22px; cursor: pointer; background: none; }
         .ui-overlay { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 100; }
-        .btn { padding: 12px 25px; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .btn { padding: 12px 25px; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
         .btn-snap { background: linear-gradient(45deg, #00f2fe, #4facfe); color: #000; }
         .btn-rec { background: linear-gradient(45deg, #ff0077, #ff4b2b); }
-        .btn:hover { transform: translateY(-3px) scale(1.05); }
-
-        /* Văn bản hiệu ứng */
-        #special-text {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 80px; font-weight: 900; text-align: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 5;
-            background: linear-gradient(to bottom, #ff0077, #ffffff);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 20px rgba(255,0,119,0.5));
-        }
+        #special-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 70px; font-weight: 900; text-align: center; opacity: 0; pointer-events: none; z-index: 5; background: linear-gradient(to bottom, #ff0077, #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
 <body>
-
     <div id="special-text">MERRY CHRISTMAS!</div>
-    
     <div id="manual">
-        <h3>🎮 HƯỚNG DẪN BẤY BỀ</h3>
-        <div class="guide-item"><span class="icon">1 Tay</span> <span>Di chuyển để xoay cây thông 360°</span></div>
-        <div class="guide-item"><span class="icon">2 Tay</span> <span>Kéo giãn để "bung lụa" hạt màu</span></div>
-        <div class="guide-item"><span class="icon">❤️</span> <span>Khum tay hình trái tim để thả thính</span></div>
-        
-        <div id="controls">
-            <div class="color-row">Tầng 1 <input type="color" id="c1" value="#00ff44"></div>
-            <div class="color-row">Tầng 2 <input type="color" id="c2" value="#00cc33"></div>
-            <div class="color-row">Tầng 3 <input type="color" id="c3" value="#009922"></div>
-            <div class="color-row">Tầng 4 <input type="color" id="c4" value="#ff0000"></div>
-            <div class="color-row">Tầng 5 <input type="color" id="c5" value="#3e2723"></div>
-        </div>
+        <h3>🎮 HƯỚNG DẪN</h3>
+        <div class="guide-item"><span class="icon">1 Tay</span> Xoay cây 360°</div>
+        <div class="guide-item"><span class="icon">2 Tay</span> Zoom / Bung lụa</div>
+        <div class="guide-item"><span class="icon">❤️</span> Thả tim "Ai Lớp Diu"</div>
+        <hr style="border:0; border-top:1px solid #333; margin:10px 0;">
+        <div class="color-row">Tầng 1 <input type="color" id="c1" value="#00ff44"></div>
+        <div class="color-row">Tầng 2 <input type="color" id="c2" value="#00cc33"></div>
+        <div class="color-row">Tầng 3 <input type="color" id="c3" value="#009922"></div>
+        <div class="color-row">Tầng 4 <input type="color" id="c4" value="#ff0000"></div>
+        <div class="color-row">Tầng 5 <input type="color" id="c5" value="#3e2723"></div>
     </div>
-
     <div id="webcam-container"><video id="webcam" autoplay playsinline></video></div>
-    
     <div class="ui-overlay">
         <button class="btn btn-snap" onclick="takePhoto()">📷 ẤN VÀO ĐÂY ĐỂ SELFI NHÓ BABE</button>
         <button class="btn btn-rec" id="recBtn" onclick="toggleRecord()">📹 Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ</button>
@@ -86,7 +61,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Tạo Ngôi sao đỉnh (Star Shape)
+            // Ngôi sao 5 cánh chuẩn
             const starShape = new THREE.Shape();
             for(let i=0; i<10; i++) {
                 let r = i % 2 === 0 ? 0.25 : 0.1;
@@ -103,7 +78,6 @@
                 const y = (Math.random() * 0.6) + (tier * 0.5) - 1.5;
                 const r = (0.9 - (tier * 0.16)) * (1.5 - (y + 1.5 - (tier*0.5)));
                 const angle = Math.random() * Math.PI * 2;
-
                 treePos[i*3] = Math.cos(angle) * r;
                 treePos[i*3+1] = y;
                 treePos[i*3+2] = Math.sin(angle) * r;
@@ -122,19 +96,12 @@
             geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(treePos), 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
             updateColors();
-
             points = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.012, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending }));
             scene.add(points);
         }
 
         function updateColors() {
-            const cols = [
-                new THREE.Color(document.getElementById('c1').value),
-                new THREE.Color(document.getElementById('c2').value),
-                new THREE.Color(document.getElementById('c3').value),
-                new THREE.Color(document.getElementById('c4').value),
-                new THREE.Color(document.getElementById('c5').value)
-            ];
+            const cols = [new THREE.Color(document.getElementById('c1').value), new THREE.Color(document.getElementById('c2').value), new THREE.Color(document.getElementById('c3').value), new THREE.Color(document.getElementById('c4').value), new THREE.Color(document.getElementById('c5').value)];
             const attr = points.geometry.attributes.color.array;
             for(let i=0; i<count; i++) {
                 const t = Math.floor(Math.random() * 5);
@@ -145,41 +112,29 @@
 
         const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
         hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5 });
-        
         hands.onResults((res) => {
             if (res.multiHandLandmarks && res.multiHandLandmarks.length === 2) {
                 const h1 = res.multiHandLandmarks[0], h2 = res.multiHandLandmarks[1];
                 const d = Math.sqrt(Math.pow(h1[9].x-h2[9].x, 2) + Math.pow(h1[9].y-h2[9].y, 2));
-                
-                // Trái tim logic
                 const dThumb = Math.sqrt(Math.pow(h1[4].x-h2[4].x, 2) + Math.pow(h1[4].y-h2[4].y, 2));
                 const dIndex = Math.sqrt(Math.pow(h1[8].x-h2[8].x, 2) + Math.pow(h1[8].y-h2[8].y, 2));
                 isHeart = (dThumb < 0.12 && dIndex < 0.15);
-                
                 targetExp = isHeart ? 1.0 : THREE.MathUtils.clamp((d - 0.2) * 2.8, 0, 1.5);
                 if(audioCtx) gainNode.gain.setTargetAtTime(0.06, audioCtx.currentTime, 0.1);
             } else if (res.multiHandLandmarks && res.multiHandLandmarks.length === 1) {
                 const h = res.multiHandLandmarks[0][9];
                 points.rotation.y = (h.x - 0.5) * Math.PI * 2.5;
                 targetExp = 0; isHeart = false;
-            } else {
-                targetExp = 0; isHeart = false;
-                if(audioCtx) gainNode.gain.setTargetAtTime(0.001, audioCtx.currentTime, 0.2);
-            }
+            } else { targetExp = 0; isHeart = false; if(audioCtx) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2); }
         });
 
-        const cam = new Camera(document.getElementById('webcam'), {
-            onFrame: async () => { await hands.send({image: document.getElementById('webcam')}); },
-            width: 640, height: 480
-        });
-        cam.start();
+        new Camera(document.getElementById('webcam'), { onFrame: async () => { await hands.send({image: document.getElementById('webcam')}); }, width: 640, height: 480 }).start();
 
         function animate() {
             requestAnimationFrame(animate);
-            currentExp += (targetExp - currentExp) * 0.18; // Nhạy hơn nữa
+            currentExp += (targetExp - currentExp) * 0.18;
             const pos = points.geometry.attributes.position.array;
             const text = document.getElementById('special-text');
-
             for (let i = 0; i < count; i++) {
                 const target = isHeart ? heartPos : (targetExp > 0.8 ? explodePos : treePos);
                 pos[i*3] = THREE.MathUtils.lerp(treePos[i*3], target[i*3], currentExp);
@@ -188,70 +143,30 @@
             }
             points.geometry.attributes.position.needsUpdate = true;
             if(!isHeart && targetExp < 0.1) points.rotation.y += 0.015;
-
             star.visible = !isHeart && currentExp < 0.6;
             camera.position.z = 4 - (currentExp * 2.2);
-
-            if(isHeart) {
-                text.innerText = "Ai Lớp Diu ❤️";
-                text.style.opacity = currentExp;
-            } else {
-                text.innerText = "MERRY CHRISTMAS!";
-                text.style.opacity = currentExp > 0.8 ? (currentExp - 0.8) * 5 : 0;
-            }
-
+            if(isHeart) { text.innerText = "Ai Lớp Diu ❤️"; text.style.opacity = currentExp; }
+            else { text.innerText = "MERRY CHRISTMAS!"; text.style.opacity = currentExp > 0.8 ? (currentExp - 0.8) * 5 : 0; }
             renderer.render(scene, camera);
         }
 
-        function initAudio() {
-            if (audioCtx) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            oscillator = audioCtx.createOscillator();
-            gainNode = audioCtx.createGain();
-            oscillator.type = 'sine';
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            oscillator.start();
-        }
-
-        function takePhoto() {
-            const link = document.createElement('a');
-            link.download = 'babe-selfie.png';
-            link.href = renderer.domElement.toDataURL();
-            link.click();
-        }
-
+        function initAudio() { if (!audioCtx) { audioCtx = new AudioContext(); oscillator = audioCtx.createOscillator(); gainNode = audioCtx.createGain(); oscillator.connect(gainNode); gainNode.connect(audioCtx.destination); gainNode.gain.setValueAtTime(0, audioCtx.currentTime); oscillator.start(); } }
+        function takePhoto() { const link = document.createElement('a'); link.download = 'xmas.png'; link.href = renderer.domElement.toDataURL(); link.click(); }
         let mediaRecorder, recordedChunks = [];
         async function toggleRecord() {
-            initAudio();
-            const btn = document.getElementById('recBtn');
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                btn.innerText = "📹 Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ";
-            } else {
-                recordedChunks = [];
-                const stream = renderer.domElement.captureStream(30);
-                try {
-                    const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mic.getAudioTracks().forEach(t => stream.addTrack(t));
-                } catch(e) {}
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob); a.download = 'video-babe.webm'; a.click();
-                };
-                mediaRecorder.start();
-                btn.innerText = "⏹️ ĐANG QUAY RỒI NHÓ...";
+            initAudio(); const btn = document.getElementById('recBtn');
+            if (mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); btn.innerText = "📹 Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ"; }
+            else {
+                recordedChunks = []; const stream = renderer.domElement.captureStream(30);
+                try { const mic = await navigator.mediaDevices.getUserMedia({ audio: true }); mic.getAudioTracks().forEach(t => stream.addTrack(t)); } catch(e) {}
+                mediaRecorder = new MediaRecorder(stream); mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+                mediaRecorder.onstop = () => { const blob = new Blob(recordedChunks, { type: 'video/webm' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'video.webm'; a.click(); };
+                mediaRecorder.start(); btn.innerText = "⏹️ ĐANG QUAY...";
             }
         }
-
         document.querySelectorAll('input[type=color]').forEach(i => i.addEventListener('input', updateColors));
         window.onclick = () => initAudio();
-        initThree();
-        animate();
+        initThree(); animate();
     </script>
 </body>
 </html>
