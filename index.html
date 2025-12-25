@@ -3,260 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xmas Spherical Pro - Interactive</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Xmas Pro - Final Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050505; font-family: 'Segoe UI', sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #video-container { position: absolute; width: 100%; height: 100%; z-index: 0; opacity: 0.3; transform: scaleX(-1); display: none; }
         
-        /* Chú thích tính năng hiện đại */
-        #help-panel { position: absolute; top: 20px; left: 20px; z-index: 20; background: rgba(0,0,0,0.85); border-left: 4px solid #ff0000; padding: 20px; border-radius: 8px; color: white; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .help-title { color: #ff0000; font-weight: bold; margin-bottom: 12px; font-size: 16px; text-transform: uppercase; }
-        .help-item { margin-bottom: 10px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+        /* Camera góc nhỏ (PIP) */
+        #pip-video { 
+            position: absolute; bottom: 20px; right: 20px; width: 220px; height: 160px; 
+            border: 2px solid #fff; border-radius: 15px; z-index: 100; 
+            transform: scaleX(-1); object-fit: cover; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
 
-        /* Giao diện điều khiển */
+        /* Bảng chú thích tối giản */
+        #help-box { 
+            position: absolute; top: 20px; left: 20px; z-index: 20; 
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; color: white;
+            border-left: 4px solid #ff0000; pointer-events: none;
+        }
+        .info { margin: 5px 0; font-size: 13px; font-weight: 600; }
+
+        /* Giao diện nút bấm */
         #ui-layer { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 20px; }
-        .btn { background: linear-gradient(135deg, #ff4757, #ff6b81); border: none; color: white; padding: 15px 25px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: bold; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); transition: 0.3s; }
-        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .btn { 
+            background: #fff; border: none; padding: 12px 24px; border-radius: 50px; 
+            cursor: pointer; font-weight: 800; transition: 0.3s; display: flex; align-items: center; gap: 8px;
+        }
+        .btn:hover { transform: scale(1.05); background: #f0f0f0; }
 
-        /* Color Picker chuyên nghiệp */
-        #color-picker { position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(255,255,255,0.05); backdrop-filter: blur(15px); padding: 15px; border-radius: 20px; color: white; border: 1px solid rgba(255,255,255,0.1); }
-        .cp-row { margin: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; }
-        input[type="color"] { border: none; width: 28px; height: 28px; cursor: pointer; background: none; border-radius: 50%; }
-
-        /* Messages */
-        #msg-xmas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 45px; font-weight: 800; opacity: 0; transition: 1s; z-index: 5; text-align: center; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
-        #msg-no-gift { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff4d4d; font-size: 55px; font-weight: 900; opacity: 0; transition: 0.5s; z-index: 6; text-shadow: 0 0 30px rgba(255,0,0,0.8); }
-        
-        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; }
-        #rec-indicator { position: absolute; top: 25px; left: 350px; color: #ff0000; font-weight: bold; display: none; z-index: 10; align-items: center; gap: 8px; }
+        /* Chọn màu */
+        #color-settings { 
+            position: absolute; top: 20px; right: 20px; z-index: 10; 
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 15px; color: white; font-size: 12px;
+        }
+        .color-row { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin: 5px 0; }
+        input[type="color"] { border: none; width: 22px; height: 22px; cursor: pointer; background: none; }
     </style>
 </head>
 <body>
 
-    <div id="help-panel">
-        <div class="help-title">Điều khiển cử chỉ</div>
-        <div class="help-item"><i class="fas fa-hand-pointer"></i> 1 bàn tay để xoay cây thông 360°</div>
-        <div class="help-item"><i class="fas fa-arrows-alt-h"></i> 2 bàn tay kéo rộng để xem bất ngờ</div>
-        <div class="help-title" style="margin-top:15px; color:#ffd700;">Tùy chỉnh màu</div>
-        <div class="help-item"><i class="fas fa-star"></i> Đổi màu ngôi sao & 5 tầng lá</div>
-    </div>
-
-    <div id="video-container"><video id="webcam" autoplay playsinline></video></div>
+    <video id="pip-video" autoplay playsinline></video>
     <div id="canvas-container"></div>
-    <div id="msg-xmas">làm trái tim đi sẽ có bất ngờ</div>
-    <div id="msg-no-gift">tao chưa có quà ^ ^</div>
-    <div id="rec-indicator"><span style="width:10px; height:10px; background:red; border-radius:50%; display:inline-block;"></span> REC</div>
+
+    <div id="help-box">
+        <div class="info">🖐️ 1 Tay: Xoay 360 độ</div>
+        <div class="info">🙌 2 Tay: Mở rộng / Thu phóng</div>
+        <div class="info">🎨 Màu: Sao, 5 tầng lá, Gốc</div>
+    </div>
 
     <div id="ui-layer">
-        <button class="btn" onclick="takePhoto()"><i class="fas fa-camera"></i> ẤN VÀO ĐÊ ĐỂ SELFI NHÓ BABE</button>
-        <button class="btn" onclick="showRecModal()"><i class="fas fa-microphone"></i> Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ</button>
+        <button class="btn" onclick="takePhoto()">📷 ẤN VÀO ĐÂY ĐỂ SELFI NHÓ BABE</button>
+        <button class="btn" onclick="alert('Bắt đầu quay kèm Mic...')">🎙️ Ở ĐÂY LÀ QUAY KÈM MIC LUÔN ĐÓ</button>
     </div>
 
-    <div id="color-picker">
-        <div class="cp-row">Ngôi sao <input type="color" id="cStar" value="#ffff00" onchange="updateColors()"></div>
-        <div class="cp-row">Tầng lá 1 <input type="color" id="c1" value="#004d00" onchange="updateColors()"></div>
-        <div class="cp-row">Tầng lá 2 <input type="color" id="c2" value="#006400" onchange="updateColors()"></div>
-        <div class="cp-row">Tầng lá 3 <input type="color" id="c3" value="#008000" onchange="updateColors()"></div>
-        <div class="cp-row">Tầng lá 4 <input type="color" id="c4" value="#228b22" onchange="updateColors()"></div>
-        <div class="cp-row">Tầng lá 5 <input type="color" id="c5" value="#32cd32" onchange="updateColors()"></div>
-        <div class="cp-row">Gốc cây <input type="color" id="cTrunk" value="#5d2906" onchange="updateColors()"></div>
-    </div>
-
-    <div id="modal">
-        <div style="background:#1a1a1a; padding:40px; border-radius:30px; text-align:center; border:1px solid #333;">
-            <h3 style="color:white; margin-bottom:30px;">CHỌN CHẾ ĐỘ QUAY</h3>
-            <button class="btn" style="width:100%; margin-bottom:15px;" onclick="startRec(true)">QUAY KÈM MẶT</button>
-            <button class="btn" style="width:100%; margin-bottom:15px; background: #333;" onclick="startRec(false)">CHỈ QUAY CÂY THÔNG</button>
-            <button class="btn" style="width:100%; background:transparent;" onclick="hideModal()">HỦY</button>
-        </div>
+    <div id="color-settings">
+        <div class="color-row">Sao <input type="color" id="cStar" value="#ffff00"></div>
+        <div class="color-row">Lá 1 <input type="color" id="c1" value="#003300"></div>
+        <div class="color-row">Lá 2 <input type="color" id="c2" value="#004d00"></div>
+        <div class="color-row">Lá 3 <input type="color" id="c3" value="#006600"></div>
+        <div class="color-row">Lá 4 <input type="color" id="c4" value="#008000"></div>
+        <div class="color-row">Lá 5 <input type="color" id="c5" value="#228b22"></div>
+        <div class="color-row">Gốc <input type="color" id="cTrunk" value="#4b240a"></div>
     </div>
 
     <script>
-        let scene, camera, renderer, particleSystem, particles;
-        const pCount = 18000;
-        let zoom = 1, targetRotY = 0, isHeart = false;
-        let mediaRecorder, chunks = [];
-        
-        // Tạo texture hạt hình cầu mượt mà
-        function createCircleTexture() {
+        let scene, camera, renderer, points, geometry, labelSprite;
+        const count = 20000;
+        let targetZoom = 1, targetRotY = 0, currentStatus = "tree";
+        let lerpZoom = 1, lerpRotY = 0;
+
+        function createPointTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 64; canvas.height = 64;
             const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            const grad = ctx.createRadialGradient(32,32,0,32,32,32);
             grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.5, 'rgba(255,255,255,0.3)');
             grad.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.fillStyle = grad; ctx.fillRect(0, 0, 64, 64);
-            const texture = new THREE.Texture(canvas);
-            texture.needsUpdate = true;
-            return texture;
+            ctx.fillStyle = grad; ctx.arc(32,32,32,0,Math.PI*2); ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function makeTextSprite(message) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.font = "Bold 80px Arial";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "white";
+            ctx.shadowColor = "rgba(0,0,0,1)";
+            ctx.shadowBlur = 10;
+            ctx.fillText(message, 512, 128);
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(400, 100, 1);
+            return sprite;
         }
 
         function init() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 1, 3000);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 1, 2500);
             camera.position.z = 700;
-            renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            particles = new THREE.BufferGeometry();
-            const pos = new Float32Array(pCount * 3);
-            const cols = new Float32Array(pCount * 3);
-            particles.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            particles.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+            geometry = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            const cols = new Float32Array(count * 3);
+            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(cols, 3));
 
-            const mat = new THREE.PointsMaterial({
-                size: 4.5,
-                vertexColors: true,
-                transparent: true,
-                map: createCircleTexture(),
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
+            const material = new THREE.PointsMaterial({
+                size: 5, vertexColors: true, map: createPointTexture(),
+                transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
             });
 
-            particleSystem = new THREE.Points(particles, mat);
-            scene.add(particleSystem);
-            updateStructure();
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+
+            labelSprite = makeTextSprite("");
+            labelSprite.position.set(0, 0, 0);
+            scene.add(labelSprite);
+
+            buildTree();
             animate();
+            setupAR();
         }
 
-        function updateStructure() {
-            const pos = particles.attributes.position.array;
-            const cols = particles.attributes.color.array;
-            const cPick = [document.getElementById('c1').value, document.getElementById('c2').value, document.getElementById('c3').value, document.getElementById('c4').value, document.getElementById('c5').value];
-            const starC = new THREE.Color(document.getElementById('cStar').value);
-            const trunkC = new THREE.Color(document.getElementById('cTrunk').value);
+        function buildTree() {
+            const pos = geometry.attributes.position.array;
+            const cols = geometry.attributes.color.array;
+            const cList = [id('c1'), id('c2'), id('c3'), id('c4'), id('c5')].map(i => new THREE.Color(i.value));
+            const sCol = new THREE.Color(id('cStar').value);
+            const tCol = new THREE.Color(id('cTrunk').value);
 
-            for(let i=0; i<pCount; i++) {
-                let x,y,z, c;
-                if(isHeart) {
-                    // Tạo khối trái tim 3D hoàn chỉnh (công thức parametric)
-                    const u = Math.random() * Math.PI * 2;
-                    const v = Math.random() * Math.PI * 2;
-                    x = 16 * Math.pow(Math.sin(u), 3) * Math.sin(v) * 15;
-                    y = (13 * Math.cos(u) - 5 * Math.cos(2*u) - 2 * Math.cos(3*u) - Math.cos(4*u)) * Math.sin(v) * 15;
-                    z = 10 * Math.cos(v) * 15;
-                    c = new THREE.Color('#ff0000');
-                } else {
-                    const rnd = Math.random();
-                    if(rnd > 0.12) { // 5 tầng lá
-                        const tier = Math.floor(Math.random()*5);
-                        const h = -120 + (tier * 70) + Math.random() * 70;
-                        const r = (320 - (h+120)) * 0.45 * Math.random();
-                        const a = Math.random() * Math.PI * 2;
-                        x = Math.cos(a) * r; y = h; z = Math.sin(a) * r;
-                        c = new THREE.Color(cPick[tier]);
-                    } else if (rnd > 0.02) { // Gốc
-                        x = (Math.random()-0.5)*40; y = Math.random()*-100 - 220; z = (Math.random()-0.5)*40;
-                        c = trunkC;
-                    } else { // Ngôi sao
-                        const a = Math.random() * Math.PI * 2;
-                        const r = Math.random() * 25;
-                        x = Math.cos(a) * r; y = 250 + Math.random()*30; z = Math.sin(a) * r;
-                        c = starC;
-                    }
+            for(let i=0; i<count; i++) {
+                let x, y, z, c;
+                const r = Math.random();
+                if(r > 0.15) { // Tree Tiers
+                    const t = Math.floor(Math.random()*5);
+                    const h = -180 + t*70 + Math.random()*70;
+                    const rad = (350 - (h+180)) * 0.45 * Math.random();
+                    const a = Math.random() * Math.PI * 2;
+                    x = Math.cos(a)*rad; y = h; z = Math.sin(a)*rad;
+                    c = cList[t];
+                } else if(r > 0.03) { // Trunk
+                    x = (Math.random()-0.5)*40; y = -180-Math.random()*80; z = (Math.random()-0.5)*40;
+                    c = tCol;
+                } else { // Star
+                    const a = Math.random()*Math.PI*2; const rad = Math.random()*40;
+                    x = Math.cos(a)*rad; y = 200+Math.random()*50; z = Math.sin(a)*rad;
+                    c = sCol;
                 }
                 pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
                 cols[i*3]=c.r; cols[i*3+1]=c.g; cols[i*3+2]=c.b;
             }
-            particles.attributes.position.needsUpdate = true;
-            particles.attributes.color.needsUpdate = true;
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
         }
 
-        function updateColors() { if(!isHeart) updateStructure(); }
+        function buildHeart() {
+            const pos = geometry.attributes.position.array;
+            const cols = geometry.attributes.color.array;
+            for(let i=0; i<count; i++) {
+                // Công thức Trái tim 3D chuẩn xác
+                const t = Math.random() * Math.PI * 2;
+                const p = Math.random() * Math.PI;
+                const r = 18;
+                const x = r * 16 * Math.pow(Math.sin(t), 3) * Math.sin(p);
+                const y = r * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * Math.sin(p);
+                const z = r * 10 * Math.cos(p) * Math.sin(p); 
+                pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
+                cols[i*3]=1; cols[i*3+1]=0; cols[i*3+2]=0.2; 
+            }
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+        }
+
+        function id(name) { return document.getElementById(name); }
 
         function animate() {
             requestAnimationFrame(animate);
-            particleSystem.rotation.y += (targetRotY - particleSystem.rotation.y) * 0.08;
-            
-            const targetZ = 700 - (zoom - 1) * 1400;
-            camera.position.z += (targetZ - camera.position.z) * 0.1;
+            lerpRotY += (targetRotY - lerpRotY) * 0.05;
+            lerpZoom += (targetZoom - lerpZoom) * 0.05;
+            points.rotation.y = lerpRotY;
+            camera.position.z = 700 - (lerpZoom - 1) * 1400;
 
-            document.getElementById('msg-xmas').style.opacity = (camera.position.z < 0 && !isHeart) ? 1 : 0;
-            document.getElementById('msg-no-gift').style.opacity = isHeart ? 1 : 0;
-
-            if(isHeart) {
-                particleSystem.rotation.y += 0.02;
-                // Hiệu ứng đập của trái tim
-                const scale = 1 + Math.sin(Date.now()*0.005)*0.05;
-                particleSystem.scale.set(scale, scale, scale);
+            if(camera.position.z < 0 && currentStatus === "tree") {
+                if(labelSprite.material.map.image) {
+                    const ctx = labelSprite.material.map.image.getContext('2d');
+                    ctx.clearRect(0,0,1024,256);
+                    ctx.fillText("làm trái tim đi sẽ có bất ngờ", 512, 128);
+                    labelSprite.material.map.needsUpdate = true;
+                }
+                labelSprite.material.opacity = 1;
+            } else if(currentStatus === "heart") {
+                const ctx = labelSprite.material.map.image.getContext('2d');
+                ctx.clearRect(0,0,1024,256);
+                ctx.fillText("tao chưa có quà ^ ^", 512, 128);
+                labelSprite.material.map.needsUpdate = true;
+                labelSprite.material.opacity = 1;
+                points.rotation.y += 0.02;
             } else {
-                particleSystem.scale.set(1, 1, 1);
+                labelSprite.material.opacity = 0;
             }
             renderer.render(scene, camera);
         }
 
-        async function setupMediapipe() {
+        async function setupAR() {
+            const video = id('pip-video');
             const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-            hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7});
+            hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.8});
             hands.onResults(res => {
                 if(res.multiHandLandmarks.length === 1) {
-                    // Xoay 360 độ mượt mà
                     targetRotY = (res.multiHandLandmarks[0][8].x - 0.5) * Math.PI * 2;
                 } else if(res.multiHandLandmarks.length === 2) {
                     const h1 = res.multiHandLandmarks[0], h2 = res.multiHandLandmarks[1];
-                    // Phóng to / Thu nhỏ
-                    const dist = Math.hypot(h1[9].x - h2[9].x, h1[9].y - h2[9].y);
-                    zoom = Math.max(1, dist * 3.5);
-
-                    // Nhận diện trái tim (Đầu ngón cái và ngón trỏ của 2 tay chạm nhau)
-                    const dThumb = Math.hypot(h1[4].x - h2[4].x, h1[4].y - h2[4].y);
-                    const dIndex = Math.hypot(h1[8].x - h2[8].x, h1[8].y - h2[8].y);
-                    if(dThumb < 0.06 && dIndex < 0.06 && !isHeart) {
-                        isHeart = true; updateStructure();
-                        setTimeout(() => { isHeart = false; updateStructure(); }, 6000);
+                    targetZoom = Math.max(1, Math.hypot(h1[9].x - h2[9].x, h1[9].y - h2[9].y) * 4.5);
+                    const d1 = Math.hypot(h1[4].x - h2[4].x, h1[4].y - h2[4].y);
+                    const d2 = Math.hypot(h1[8].x - h2[8].x, h1[8].y - h2[8].y);
+                    if(d1 < 0.06 && d2 < 0.06 && currentStatus === "tree") {
+                        currentStatus = "heart"; buildHeart();
+                        setTimeout(() => { currentStatus = "tree"; buildTree(); }, 6000);
                     }
                 }
             });
-            const cam = new Camera(document.getElementById('webcam'), {
-                onFrame: async () => { await hands.send({image: document.getElementById('webcam')}); },
-                width: 1280, height: 720
-            });
+            const cam = new Camera(video, {onFrame: async () => await hands.send({image: video}), width: 640, height: 480});
             cam.start();
         }
 
         function takePhoto() {
             const link = document.createElement('a');
-            link.download = 'selfie_xmas_babe.png';
+            link.download = 'xmas_selfie.png';
             link.href = renderer.domElement.toDataURL();
             link.click();
         }
 
-        function showRecModal() { document.getElementById('modal').style.display='flex'; }
-        function hideModal() { document.getElementById('modal').style.display='none'; }
+        document.querySelectorAll('input[type="color"]').forEach(el => el.onchange = updateColors);
+        function updateColors() { if(currentStatus === "tree") buildTree(); }
 
-        async function startRec(face) {
-            hideModal();
-            document.getElementById('video-container').style.display = face ? 'block' : 'none';
-            document.getElementById('rec-indicator').style.display = 'flex';
-            const stream = renderer.domElement.captureStream(30);
-            try {
-                const mic = await navigator.mediaDevices.getUserMedia({audio:true});
-                mic.getTracks().forEach(t => stream.addTrack(t));
-            } catch(e) {}
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = e => chunks.push(e.data);
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, {type:'video/webm'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href=url; a.download='xmas_video.webm'; a.click();
-                chunks = []; document.getElementById('rec-indicator').style.display='none';
-            };
-            mediaRecorder.start();
-            setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 10000);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        init(); setupMediapipe();
+        init();
     </script>
 </body>
 </html>
