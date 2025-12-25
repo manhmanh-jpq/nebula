@@ -2,23 +2,17 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Xmas Pro - Super Dense Edition</title>
+    <title>Xmas Pro - Fixed & Stable</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        #canvas-container { position: absolute; width: 100%; height: 100%; z-index: 1; }
-        #instruction-fixed {
-            position: absolute; top: 20px; left: 20px; color: white; z-index: 100;
-            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; border-left: 4px solid #00ffff;
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #canvas-container { position: absolute; width: 100%; height: 100%; }
+        #instruction {
+            position: absolute; top: 20px; left: 20px; color: #00ffff; z-index: 100;
+            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; border-left: 4px solid #00ffff;
         }
-        .hint-line { font-size: 14px; font-weight: bold; margin: 5px 0; text-transform: uppercase; color: #00ffff; }
-        #update-picker {
-            position: absolute; top: 20px; right: 20px; background: rgba(20,20,20,0.95);
-            padding: 15px; border-radius: 10px; border: 1px solid #444; color: white; width: 220px; z-index: 100;
-        }
-        .row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 12px; }
         #pip-container { 
             position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; 
             border: 2px solid #fff; border-radius: 10px; overflow: hidden; z-index: 100;
@@ -27,29 +21,21 @@
         #bottom-bar {
             position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 100;
         }
-        .btn { background: white; color: black; padding: 12px 25px; border-radius: 30px; font-weight: 900; border: none; cursor: pointer; font-size: 13px; }
+        .btn { background: white; color: black; padding: 12px 25px; border-radius: 30px; font-weight: bold; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="instruction-fixed">
-        <div class="hint-line">● TAY TRÁI: ZOOM (CHỤM/XÒE)</div>
-        <div class="hint-line" style="color: #ff00ff;">● TAY PHẢI: XOAY 360°</div>
-    </div>
-
-    <div id="update-picker">
-        <div style="font-weight:bold; margin-bottom:10px;">Cấu hình cây thông</div>
-        <div class="row">Sao hạt bụi <input type="color" id="c0" value="#ffffaa"></div>
-        <div class="row">Lá (Siêu dày) <input type="color" id="c1" value="#008800"></div>
-        <div class="row">Dây & Đèn <input type="color" id="c6" value="#ffee00"></div>
-        <div class="row">Gốc <input type="color" id="c7" value="#3d2b1f"></div>
+    <div id="instruction">
+        <b>TAY TRÁI:</b> ZOOM (CHỤM/XÒE)<br>
+        <b>TAY PHẢI:</b> XOAY 360°
     </div>
 
     <div id="pip-container"><video id="pip-video" autoplay playsinline></video></div>
 
     <div id="bottom-bar">
         <button class="btn" onclick="capture()">📷 CHỤP ẢNH</button>
-        <button class="btn">🎙️ QUAY VIDEO KÈM MIC</button>
+        <button class="btn">🎙️ QUAY VIDEO</button>
     </div>
 
     <div id="canvas-container"></div>
@@ -58,22 +44,19 @@
     let scene, camera, renderer, treeGroup, textGroup, starGroup;
     let zoomTarget = 1, rotXTarget = 0, rotYTarget = 0;
     let currentZoom = 1, currentRotX = 0, currentRotY = 0;
-    const SMOOTH = 0.04;
+    const SMOOTH = 0.05;
 
+    // Hiệu ứng âm thanh Sci-fi khi di chuyển
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSciFiSound(freq) {
+    function playMoveSound(val) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
+        const g = audioCtx.createGain();
+        osc.frequency.setValueAtTime(150 + val * 100, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.02, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     }
 
     function init() {
@@ -90,88 +73,26 @@
         textGroup = new THREE.Group();
         scene.add(textGroup);
 
-        createSuperDenseTree();
-        createLabels();
+        buildTree();
+        buildLabels();
         animate();
-        startCamera();
+        setupHands();
     }
 
-    function createSuperDenseTree() {
-        while(treeGroup.children.length > 0) treeGroup.remove(treeGroup.children[0]);
-        const cols = [0,1,6,7].map(i => document.getElementById('c'+i).value);
-
+    function buildTree() {
+        // Ngôi sao hạt bụi
         starGroup = new THREE.Group();
-        const starGeo = new THREE.BufferGeometry();
-        const starPos = [];
-        for(let i=0; i<800; i++) {
-            const r = Math.random() * 35;
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
-            starPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+        const sGeo = new THREE.BufferGeometry();
+        const sPos = [];
+        for(let i=0; i<600; i++) {
+            const r = Math.random() * 30;
+            const theta = Math.random() * 6.28;
+            const phi = Math.random() * 3.14;
+            sPos.push(r*Math.sin(phi)*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta), r*Math.cos(phi));
         }
-        starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-        starGroup.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: cols[0], size: 1.8, transparent: true, blending: THREE.AdditiveBlending})));
-        starGroup.position.y = 310;
+        sGeo.setAttribute('position', new THREE.Float32BufferAttribute(sPos, 3));
+        starGroup.add(new THREE.Points(sGeo, new THREE.PointsMaterial({color: 0xffffaa, size: 2})));
+        starGroup.position.y = 300;
         treeGroup.add(starGroup);
 
-        for(let i=0; i<10; i++) {
-            const rBase = 300 - i*28;
-            const y = -250 + i*62;
-            
-            for(let layer=0; layer<3; layer++) {
-                const pGeo = new THREE.BufferGeometry();
-                const pPos = [];
-                const particleCount = 1500;
-                for(let j=0; j<particleCount; j++) {
-                    const a = Math.random() * Math.PI * 2;
-                    const rad = Math.random() * (rBase + layer*5);
-                    pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*35, Math.sin(a)*rad);
-                }
-                pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pPos, 3));
-                const points = new THREE.Points(pGeo, new THREE.PointsMaterial({color: cols[1], size: 1.5, transparent: true, opacity: 0.8}));
-                points.position.y = y;
-                treeGroup.add(points);
-            }
-        }
-
-        const curvePoints = [];
-        for(let i=0; i<=180; i++) {
-            const t = i/180; const a = t * Math.PI * 20; const rad = (1-t)*300;
-            curvePoints.push(new THREE.Vector3(Math.cos(a)*rad, -270 + t*580, Math.sin(a)*rad));
-        }
-        const spiralGeo = new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(curvePoints).getPoints(500));
-        treeGroup.add(new THREE.Points(spiralGeo, new THREE.PointsMaterial({color: cols[2], size: 5, blending: THREE.AdditiveBlending})));
-
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(30, 40, 110), new THREE.MeshBasicMaterial({color: cols[3]}));
-        trunk.position.y = -320;
-        treeGroup.add(trunk);
-    }
-
-    function createLabels() {
-        const createT = (txt, size) => {
-            const can = document.createElement('canvas');
-            can.width = 1024; can.height = 256;
-            const ctx = can.getContext('2d');
-            ctx.font = `bold ${size}px Arial`; ctx.fillStyle = "white"; ctx.textAlign = "center";
-            ctx.fillText(txt, 512, 128);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(can), transparent: true, depthTest: false}));
-            sprite.scale.set(160, 40, 1);
-            return sprite;
-        };
-        
-        const m1 = createT("Merry Christmas!", 85); m1.position.z = 25; textGroup.add(m1);
-        const m2 = createT("Tao chưa có quà", 85); m2.rotation.y = Math.PI; m2.position.z = -25; textGroup.add(m2);
-
-        const dividerGeo = new THREE.BufferGeometry();
-        const divPos = [];
-        for(let i=0; i<3000; i++) {
-            divPos.push((Math.random()-0.5)*350, (Math.random()-0.5)*180, (Math.random()-0.5)*12);
-        }
-        dividerGeo.setAttribute('position', new THREE.Float32BufferAttribute(divPos, 3));
-        textGroup.add(new THREE.Points(dividerGeo, new THREE.PointsMaterial({color: 0x222222, size: 1.5, transparent: true, opacity: 0.9})));
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
-        
-        if(Math.abs(rotYTarget - currentRotY) > 0.05 || Math.abs(zoomTarget - currentZoom) > 0.05) {
+        //
