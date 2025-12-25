@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Xmas Pro - Two Hands Control</title>
+    <title>Xmas Pro - Multi-Layer Neon</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -34,18 +34,18 @@
 <body>
 
     <div id="instruction">
-        <div class="hint" id="hint-text">Tay Trái: Chụm/Xòe để Zoom | Tay Phải: Di chuyển để Xoay</div>
+        <div class="hint" id="hint-text">Tay TRÁI: Chụm/Xòe để Zoom<br>Tay PHẢI: Di chuyển để Xoay</div>
     </div>
 
     <div id="update-picker">
-        <div style="font-weight:bold; margin-bottom:10px;">Cấu hình màu sắc</div>
-        <div class="row">Sao <input type="color" id="c0" value="#ffff00"></div>
+        <div style="font-weight:bold; margin-bottom:10px; border-bottom: 1px solid #444;">Update picker</div>
+        <div class="row">Sao <input type="color" id="c0" value="#ffffaa"></div>
         <div class="row">Lá tầng 1 <input type="color" id="c1" value="#004d00"></div>
         <div class="row">Lá tầng 2 <input type="color" id="c2" value="#006900"></div>
         <div class="row">Lá tầng 3 <input type="color" id="c3" value="#008000"></div>
         <div class="row">Lá tầng 4 <input type="color" id="c4" value="#228b22"></div>
         <div class="row">Lá tầng 5 <input type="color" id="c5" value="#32cd32"></div>
-        <div class="row">Dây đèn <input type="color" id="c6" value="#ffcc00"></div>
+        <div class="row">Dây đèn <input type="color" id="c6" value="#ffee00"></div>
         <div class="row">Gốc <input type="color" id="c7" value="#2d1a00"></div>
     </div>
 
@@ -62,7 +62,7 @@
     let scene, camera, renderer, treeGroup, textGroup;
     let zoomTarget = 1, rotXTarget = 0, rotYTarget = 0;
     let currentZoom = 1, currentRotX = 0, currentRotY = 0;
-    const SMOOTH = 0.04; // Độ lì
+    const SMOOTH = 0.04;
 
     function init() {
         scene = new THREE.Scene();
@@ -89,46 +89,54 @@
         const cols = [0,1,2,3,4,5,6,7].map(i => document.getElementById('c'+i).value);
 
         // Gốc cây
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(20, 25, 60, 12), new THREE.MeshBasicMaterial({color: cols[7]}));
-        trunk.position.y = -250;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(20, 30, 80, 12), new THREE.MeshBasicMaterial({color: cols[7]}));
+        trunk.position.y = -280;
         treeGroup.add(trunk);
 
-        // 5 Tầng Lá (Hạt bụi + Neon)
-        for(let i=0; i<5; i++) {
-            const r = 220 - i*40;
-            const y = -180 + i*85;
+        // TẠO NHIỀU TẦNG LÁ (Tăng số lớp lá lên để dày đặc hơn như hình vẽ)
+        const layers = 8; // Tăng từ 5 lên 8 tầng để tạo độ dày
+        for(let i=0; i<layers; i++) {
+            const r = 250 - i*30;
+            const h = 150;
+            const y = -220 + i*65;
+            const colIdx = i < 5 ? i + 1 : 5; // Dùng màu lá tầng 5 cho các tầng cao hơn
+
+            // 1. Khung nón Neon
             const cone = new THREE.LineSegments(
-                new THREE.EdgesGeometry(new THREE.ConeGeometry(r, 130, 8, 1, true)),
-                new THREE.LineBasicMaterial({color: cols[i+1]})
+                new THREE.EdgesGeometry(new THREE.ConeGeometry(r, h, 10, 2, true)),
+                new THREE.LineBasicMaterial({color: cols[colIdx], transparent: true, opacity: 0.6})
             );
             cone.position.y = y;
             treeGroup.add(cone);
 
+            // 2. Đám mây hạt bụi (Mật độ cao)
             const pGeo = new THREE.BufferGeometry();
             const pPos = [];
-            for(let j=0; j<800; j++) {
+            for(let j=0; j<1500; j++) { // Tăng số hạt mỗi tầng
                 const a = Math.random() * Math.PI * 2;
                 const rad = Math.random() * r;
-                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*15, Math.sin(a)*rad);
+                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*25, Math.sin(a)*rad);
             }
             pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pPos, 3));
-            treeGroup.add(new THREE.Points(pGeo, new THREE.PointsMaterial({color: cols[i+1], size: 2})));
+            const pPoints = new THREE.Points(pGeo, new THREE.PointsMaterial({color: cols[colIdx], size: 2.2, transparent: true, opacity: 0.8}));
+            pPoints.position.y = y;
+            treeGroup.add(pPoints);
         }
 
-        // Dây đèn xoắn ốc
+        // Dây đèn xoắn ốc (Dày hơn)
         const curvePoints = [];
-        for(let i=0; i<=100; i++) {
-            const t = i/100; const a = t * Math.PI * 14; const rad = (1-t)*220;
-            curvePoints.push(new THREE.Vector3(Math.cos(a)*rad, -230 + t*460, Math.sin(a)*rad));
+        for(let i=0; i<=150; i++) {
+            const t = i/150; const a = t * Math.PI * 18; const rad = (1-t)*260;
+            curvePoints.push(new THREE.Vector3(Math.cos(a)*rad, -250 + t*500, Math.sin(a)*rad));
         }
         treeGroup.add(new THREE.Points(
-            new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(curvePoints).getPoints(200)),
-            new THREE.PointsMaterial({color: cols[6], size: 5})
+            new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(curvePoints).getPoints(300)),
+            new THREE.PointsMaterial({color: cols[6], size: 6, blending: THREE.AdditiveBlending})
         ));
 
-        // Sao
-        const star = new THREE.Mesh(new THREE.SphereGeometry(22, 12, 12), new THREE.MeshBasicMaterial({color: cols[0]}));
-        star.position.y = 250;
+        // Ngôi sao
+        const star = new THREE.Mesh(new THREE.SphereGeometry(25, 16, 16), new THREE.MeshBasicMaterial({color: cols[0]}));
+        star.position.y = 280;
         treeGroup.add(star);
     }
 
@@ -140,11 +148,11 @@
             ctx.font = "bold 80px Arial"; ctx.fillStyle = "white"; ctx.textAlign = "center";
             ctx.fillText(txt, 512, 128);
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false}));
-            sprite.scale.set(500, 125, 1);
+            sprite.scale.set(600, 150, 1);
             return sprite;
         };
-        const l1 = createLabel("Merry Christmas!"); l1.position.z = 20; textGroup.add(l1);
-        const l2 = createLabel("Tao chưa có quà"); l2.rotation.y = Math.PI; l2.position.z = -20; textGroup.add(l2);
+        const l1 = createLabel("Merry Christmas!"); l1.position.z = 25; textGroup.add(l1);
+        const l2 = createLabel("Tao chưa có quà"); l2.rotation.y = Math.PI; l2.position.z = -25; textGroup.add(l2);
     }
 
     function animate() {
@@ -163,10 +171,10 @@
         const hint = document.getElementById('hint-text');
         if (camera.position.z < 100) {
             textGroup.visible = true;
-            hint.innerHTML = "Lấy tay PHẢI để xoay hình đi<br>Tay TRÁI chụm/xòe để thoát ra";
+            hint.innerHTML = "Lấy tay PHẢI để xoay hình<br>Tay TRÁI chụm/xòe để thoát";
         } else {
             textGroup.visible = false;
-            hint.innerHTML = "Tay TRÁI: Chụm/Xòe để Zoom<br>Tay PHẢI: Di chuyển để Xoay";
+            hint.innerHTML = "Tay TRÁI: Zoom | Tay PHẢI: Xoay";
         }
         renderer.render(scene, camera);
     }
@@ -179,16 +187,12 @@
         hands.onResults(res => {
             if(res.multiHandLandmarks && res.multiHandedness) {
                 res.multiHandLandmarks.forEach((landmarks, index) => {
-                    const label = res.multiHandedness[index].label; // "Left" hoặc "Right"
-                    
-                    // LƯU Ý: MediaPipe nhận diện theo góc nhìn Camera, nên Left/Right có thể bị ngược tùy Mirror
+                    const label = res.multiHandedness[index].label;
                     if (label === "Right") { 
-                        // TAY PHẢI: XOAY 360 (Dựa trên vị trí lòng bàn tay)
-                        rotYTarget = (landmarks[9].x - 0.5) * Math.PI * 2.5;
-                        rotXTarget = (landmarks[9].y - 0.5) * Math.PI;
+                        rotYTarget = (landmarks[9].x - 0.5) * Math.PI * 3;
+                        rotXTarget = (landmarks[9].y - 0.5) * Math.PI * 1.5;
                     } 
                     else if (label === "Left") {
-                        // TAY TRÁI: THU PHÓNG (Dựa trên chụm/xòe ngón cái và trỏ)
                         const dist = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y);
                         zoomTarget = dist * 5.5; 
                         if(zoomTarget < 0.6) zoomTarget = 0.6;
@@ -203,7 +207,7 @@
     function capture() {
         const link = document.createElement('a');
         link.href = renderer.domElement.toDataURL();
-        link.download = 'xmas_selfie.png'; link.click();
+        link.download = 'xmas_pro.png'; link.click();
     }
 
     document.querySelectorAll('input').forEach(i => i.onchange = createTree);
