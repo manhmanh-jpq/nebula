@@ -2,39 +2,28 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Xmas Perfected - Final Edition 2025</title>
+    <title>Xmas Pro - Sci-Fi Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { position: absolute; width: 100%; height: 100%; z-index: 1; }
-        
-        /* Chú thích góc trái trên */
         #instruction-fixed {
-            position: absolute; top: 20px; left: 20px;
-            color: white; z-index: 100; pointer-events: none;
-            background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px;
-            border-left: 4px solid #00ff00;
+            position: absolute; top: 20px; left: 20px; color: white; z-index: 100;
+            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; border-left: 4px solid #00ffff;
         }
-        .hint-line { font-size: 14px; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
-
-        /* Bảng điều khiển màu sắc */
+        .hint-line { font-size: 14px; font-weight: bold; margin: 5px 0; text-transform: uppercase; color: #00ffff; }
         #update-picker {
             position: absolute; top: 20px; right: 20px; background: rgba(20,20,20,0.9);
             padding: 15px; border-radius: 10px; border: 1px solid #444; color: white; width: 220px; z-index: 100;
         }
         .row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 12px; }
-        input[type="color"] { background: none; border: none; width: 40px; height: 20px; cursor: pointer; }
-
-        /* Camera nhỏ (PiP) */
         #pip-container { 
             position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; 
             border: 2px solid #fff; border-radius: 10px; overflow: hidden; z-index: 100;
         }
         #pip-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        
-        /* Thanh nút bấm */
         #bottom-bar {
             position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 100;
         }
@@ -44,17 +33,13 @@
 <body>
 
     <div id="instruction-fixed">
-        <div class="hint-line" style="color: #00ff00;">● TAY TRÁI: CHỤM/XÒE ĐỂ ZOOM</div>
-        <div class="hint-line" style="color: #ff0000;">● TAY PHẢI: DI CHUYỂN ĐỂ XOAY 360°</div>
+        <div class="hint-line">● TAY TRÁI: ZOOM (CHỤM/XÒE)</div>
+        <div class="hint-line" style="color: #ff00ff;">● TAY PHẢI: XOAY 360°</div>
     </div>
 
-    <audio id="bg-music" loop>
-        <source src="https://www.chosic.com/wp-content/uploads/2021/11/We-Wish-You-A-Merry-Christmas-Lofi.mp3" type="audio/mpeg">
-    </audio>
-
     <div id="update-picker">
-        <div style="font-weight:bold; margin-bottom:10px;">Cấu hình cây thông</div>
-        <div class="row">Sao (Hạt bụi) <input type="color" id="c0" value="#ffffaa"></div>
+        <div style="font-weight:bold; margin-bottom:10px;">Update picker</div>
+        <div class="row">Sao hạt bụi <input type="color" id="c0" value="#ffffaa"></div>
         <div class="row">Lá (10 tầng) <input type="color" id="c1" value="#006400"></div>
         <div class="row">Dây & Đèn <input type="color" id="c6" value="#ffee00"></div>
         <div class="row">Gốc <input type="color" id="c7" value="#3d2b1f"></div>
@@ -64,16 +49,33 @@
 
     <div id="bottom-bar">
         <button class="btn" onclick="capture()">📷 CHỤP ẢNH</button>
-        <button class="btn" onclick="startAudio()">🎵 BẬT NHẠC & QUAY</button>
+        <button class="btn">🎙️ QUAY VIDEO KÈM MIC</button>
     </div>
 
     <div id="canvas-container"></div>
 
 <script>
-    let scene, camera, renderer, treeGroup, textGroup, secretHint, starParticles;
+    let scene, camera, renderer, treeGroup, textGroup, secretHint, starGroup;
     let zoomTarget = 1, rotXTarget = 0, rotYTarget = 0;
     let currentZoom = 1, currentRotX = 0, currentRotY = 0;
     const SMOOTH = 0.04;
+
+    // Âm thanh Sci-fi
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSciFiSound(freq) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 2, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
 
     function init() {
         scene = new THREE.Scene();
@@ -89,63 +91,68 @@
         textGroup = new THREE.Group();
         scene.add(textGroup);
 
-        createAdvancedTree();
+        createFullTree();
         createLabels();
         animate();
         startCamera();
     }
 
-    function createAdvancedTree() {
+    function createFullTree() {
         while(treeGroup.children.length > 0) treeGroup.remove(treeGroup.children[0]);
         const cols = [0,1,6,7].map(i => document.getElementById('c'+i).value);
 
-        // 1. NGÔI SAO HẠT BỤI
+        // 1. NGÔI SAO HẠT BỤI ĐỈNH CÂY
+        starGroup = new THREE.Group();
+        const starPoints = 500;
         const starGeo = new THREE.BufferGeometry();
         const starPos = [];
-        for(let i=0; i<600; i++) {
+        for(let i=0; i<starPoints; i++) {
             const r = Math.random() * 35;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
             starPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
         }
         starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-        starParticles = new THREE.Points(starGeo, new THREE.PointsMaterial({color: cols[0], size: 2, transparent: true}));
-        starParticles.position.y = 300;
-        treeGroup.add(starParticles);
+        const starMaterial = new THREE.PointsMaterial({color: cols[0], size: 2, transparent: true, blending: THREE.AdditiveBlending});
+        starGroup.add(new THREE.Points(starGeo, starMaterial));
+        starGroup.position.y = 300;
+        treeGroup.add(starGroup);
 
-        // 2. 10 TẦNG LÁ DÀY ĐẶC (NEON + BỤI)
+        // 2. 10 TẦNG LÁ (DÀY ĐẶC HẠT BỤI)
         for(let i=0; i<10; i++) {
             const r = 280 - i*25;
             const y = -240 + i*60;
             
+            // Khung nón Neon mờ
             const cone = new THREE.LineSegments(
                 new THREE.EdgesGeometry(new THREE.ConeGeometry(r, 140, 10, 1, true)),
-                new THREE.LineBasicMaterial({color: cols[1], transparent: true, opacity: 0.3})
+                new THREE.LineBasicMaterial({color: cols[1], transparent: true, opacity: 0.2})
             );
             cone.position.y = y;
             treeGroup.add(cone);
 
+            // Tầng hạt bụi dày
             const pGeo = new THREE.BufferGeometry();
             const pPos = [];
-            for(let j=0; j<1500; j++) {
+            for(let j=0; j<2000; j++) {
                 const a = Math.random() * Math.PI * 2;
                 const rad = Math.random() * r;
-                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*25, Math.sin(a)*rad);
+                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*30, Math.sin(a)*rad);
             }
             pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pPos, 3));
             treeGroup.add(new THREE.Points(pGeo, new THREE.PointsMaterial({color: cols[1], size: 1.5})));
         }
 
-        // 3. DÂY ĐÈN & BÓNG ĐÈN LED
+        // 3. DÂY ĐÈN XOẮN ỐC & BÓNG ĐÈN LED
         const curvePoints = [];
         for(let i=0; i<=150; i++) {
             const t = i/150; const a = t * Math.PI * 18; const rad = (1-t)*280;
             curvePoints.push(new THREE.Vector3(Math.cos(a)*rad, -260 + t*540, Math.sin(a)*rad));
         }
-        const spiralGeo = new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(curvePoints).getPoints(350));
+        const spiralGeo = new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(curvePoints).getPoints(400));
         treeGroup.add(new THREE.Points(spiralGeo, new THREE.PointsMaterial({color: cols[2], size: 5, blending: THREE.AdditiveBlending})));
 
-        // 4. GỐC
+        // 4. GỐC CÂY
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(25, 35, 100), new THREE.MeshBasicMaterial({color: cols[3]}));
         trunk.position.y = -300;
         treeGroup.add(trunk);
@@ -159,29 +166,35 @@
             ctx.font = `bold ${size}px Arial`; ctx.fillStyle = "white"; ctx.textAlign = "center";
             ctx.fillText(txt, 512, 128);
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(can), transparent: true, depthTest: false}));
-            sprite.scale.set(220, 55, 1); // THU NHỎ KÍCH THƯỚC CHỮ ĐỂ KHÔNG BỊ TRÀN
+            sprite.scale.set(180, 45, 1); // THU NHỎ KÍCH THƯỚC CHỮ
             return sprite;
         };
         
-        const m1 = createT("Merry Christmas!", 75); m1.position.z = 25; textGroup.add(m1);
-        const m2 = createT("Tao chưa có quà", 75); m2.rotation.y = Math.PI; m2.position.z = -25; textGroup.add(m2);
+        const m1 = createT("Merry Christmas!", 80); m1.position.z = 25; textGroup.add(m1);
+        const m2 = createT("Tao chưa có quà", 80); m2.rotation.y = Math.PI; m2.position.z = -25; textGroup.add(m2);
 
-        // VÁCH NGĂN HẠT BỤI GIỮA 2 MẶT CHỮ
+        // VÁCH NGĂN BỤI GIỮA 2 MẶT CHỮ
         const dividerGeo = new THREE.BufferGeometry();
         const divPos = [];
-        for(let i=0; i<1500; i++) {
-            divPos.push((Math.random()-0.5)*350, (Math.random()-0.5)*180, (Math.random()-0.5)*8);
+        for(let i=0; i<2000; i++) {
+            divPos.push((Math.random()-0.5)*300, (Math.random()-0.5)*150, (Math.random()-0.5)*10);
         }
         dividerGeo.setAttribute('position', new THREE.Float32BufferAttribute(divPos, 3));
-        textGroup.add(new THREE.Points(dividerGeo, new THREE.PointsMaterial({color: 0x444444, size: 1.2, transparent: true, opacity: 0.6})));
+        textGroup.add(new THREE.Points(dividerGeo, new THREE.PointsMaterial({color: 0x333333, size: 1.2, transparent: true, opacity: 0.7})));
 
         secretHint = createT("Lấy tay PHẢI để xoay hình đi", 60);
-        secretHint.scale.set(200, 50, 1); secretHint.position.y = -80;
+        secretHint.scale.set(150, 40, 1); secretHint.position.y = -70;
         secretHint.visible = false; scene.add(secretHint);
     }
 
     function animate() {
         requestAnimationFrame(animate);
+        
+        // Phát âm thanh khi có chuyển động lớn
+        if(Math.abs(rotYTarget - currentRotY) > 0.1 || Math.abs(zoomTarget - currentZoom) > 0.1) {
+            playSciFiSound(200 + currentZoom * 100);
+        }
+
         currentRotY += (rotYTarget - currentRotY) * SMOOTH;
         currentRotX += (rotXTarget - currentRotX) * SMOOTH;
         currentZoom += (zoomTarget - currentZoom) * SMOOTH;
@@ -193,11 +206,14 @@
         
         camera.position.z = 800 - (currentZoom - 1) * 1600;
 
-        if (camera.position.z < 180) {
+        if (camera.position.z < 200) {
             textGroup.visible = true; secretHint.visible = true;
         } else {
             textGroup.visible = false; secretHint.visible = false;
         }
+
+        // Ngôi sao xoay nhẹ lấp lánh
+        if(starGroup) starGroup.rotation.y += 0.01;
 
         renderer.render(scene, camera);
     }
@@ -205,37 +221,10 @@
     async function startCamera() {
         const video = document.getElementById('pip-video');
         const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-        hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7});
+        hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.75});
         
         hands.onResults(res => {
             if(res.multiHandLandmarks && res.multiHandedness) {
                 res.multiHandLandmarks.forEach((landmarks, index) => {
                     const isRightHand = res.multiHandedness[index].label === "Right";
-                    if (isRightHand) { 
-                        // TAY PHẢI XOAY 360
-                        rotYTarget = (landmarks[9].x - 0.5) * Math.PI * 3.5;
-                        rotXTarget = (landmarks[9].y - 0.5) * Math.PI;
-                    } else {
-                        // TAY TRÁI ZOOM
-                        const d = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y);
-                        zoomTarget = d * 5.8; 
-                        if(zoomTarget < 0.6) zoomTarget = 0.6;
-                    }
-                });
-            }
-        });
-        const cam = new Camera(video, {onFrame: async () => await hands.send({image: video}), width: 640, height: 480});
-        cam.start();
-    }
-
-    function startAudio() { document.getElementById('bg-music').play(); }
-    function capture() {
-        const link = document.createElement('a');
-        link.href = renderer.domElement.toDataURL();
-        link.download = 'Xmas_Final_2025.png'; link.click();
-    }
-    document.querySelectorAll('input').forEach(i => i.onchange = createAdvancedTree);
-    init();
-</script>
-</body>
-</html>
+                    if (isRightHand) {
