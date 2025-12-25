@@ -95,4 +95,101 @@
         starGroup.position.y = 300;
         treeGroup.add(starGroup);
 
-        //
+        // 10 Tầng lá bụi dày
+        for(let i=0; i<10; i++) {
+            const r = 280 - i*25;
+            const y = -240 + i*60;
+            const pGeo = new THREE.BufferGeometry();
+            const pPos = [];
+            for(let j=0; j<3000; j++) {
+                const a = Math.random() * 6.28;
+                const rad = Math.random() * r;
+                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*30, Math.sin(a)*rad);
+            }
+            pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pPos, 3));
+            const points = new THREE.Points(pGeo, new THREE.PointsMaterial({color: 0x00aa00, size: 1.5}));
+            points.position.y = y;
+            treeGroup.add(points);
+        }
+
+        // Dây đèn
+        const cPts = [];
+        for(let i=0; i<=100; i++) {
+            const t = i/100; const a = t*Math.PI*16; const rad = (1-t)*280;
+            cPts.push(new THREE.Vector3(Math.cos(a)*rad, -250+t*530, Math.sin(a)*rad));
+        }
+        const spiral = new THREE.Points(new THREE.BufferGeometry().setFromPoints(cPts), new THREE.PointsMaterial({color: 0xffee00, size: 4}));
+        treeGroup.add(spiral);
+
+        // Gốc
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(25, 30, 80), new THREE.MeshBasicMaterial({color: 0x3d2b1f}));
+        trunk.position.y = -280;
+        treeGroup.add(trunk);
+    }
+
+    function buildLabels() {
+        const makeT = (txt) => {
+            const can = document.createElement('canvas'); can.width = 512; can.height = 128;
+            const ctx = can.getContext('2d'); ctx.font = "bold 40px Arial"; ctx.fillStyle = "white"; ctx.textAlign = "center";
+            ctx.fillText(txt, 256, 64);
+            const spr = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(can), transparent: true, depthTest: false}));
+            spr.scale.set(200, 50, 1); return spr;
+        };
+        const m1 = makeT("Merry Christmas!"); m1.position.z = 30; textGroup.add(m1);
+        const m2 = makeT("Tao chưa có quà"); m2.rotation.y = Math.PI; m2.position.z = -30; textGroup.add(m2);
+        
+        // Vách ngăn bụi
+        const divGeo = new THREE.BufferGeometry(); const divP = [];
+        for(let i=0; i<1000; i++) divP.push((Math.random()-0.5)*300, (Math.random()-0.5)*100, (Math.random()-0.5)*10);
+        divGeo.setAttribute('position', new THREE.Float32BufferAttribute(divP, 3));
+        textGroup.add(new THREE.Points(divGeo, new THREE.PointsMaterial({color: 0x333333, size: 1})));
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if(Math.abs(rotYTarget - currentRotY) > 0.05) playMoveSound(currentZoom);
+        
+        currentRotY += (rotYTarget - currentRotY) * SMOOTH;
+        currentRotX += (rotXTarget - currentRotX) * SMOOTH;
+        currentZoom += (zoomTarget - currentZoom) * SMOOTH;
+        
+        treeGroup.rotation.y = currentRotY;
+        treeGroup.rotation.x = currentRotX;
+        textGroup.rotation.y = currentRotY;
+        textGroup.rotation.x = currentRotX;
+        camera.position.z = 800 - (currentZoom - 1) * 1600;
+        textGroup.visible = camera.position.z < 250;
+        if(starGroup) starGroup.rotation.y += 0.01;
+        renderer.render(scene, camera);
+    }
+
+    async function setupHands() {
+        const video = document.getElementById('pip-video');
+        const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+        hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7});
+        hands.onResults(res => {
+            if(res.multiHandLandmarks && res.multiHandedness) {
+                res.multiHandLandmarks.forEach((lm, idx) => {
+                    if (res.multiHandedness[idx].label === "Right") {
+                        rotYTarget = (lm[9].x - 0.5) * 6;
+                        rotXTarget = (lm[9].y - 0.5) * 3;
+                    } else {
+                        const d = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
+                        zoomTarget = d * 6;
+                    }
+                });
+            }
+        });
+        const cam = new Camera(video, {onFrame: async () => await hands.send({image: video}), width: 640, height: 480});
+        cam.start();
+    }
+
+    function capture() {
+        const link = document.createElement('a');
+        link.href = renderer.domElement.toDataURL();
+        link.download = 'Xmas.png'; link.click();
+    }
+    init();
+</script>
+</body>
+</html>
