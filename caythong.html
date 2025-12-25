@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cây Thông Noel</title>
+    <style>
+        body { background-color: #000000; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .tree { color: #2ecc71; font-family: monospace; font-weight: bold; text-align: center; line-height: 1.2; }
+    </style>
+</head>
+<body>
+    <div class="tree" id="tree"></div>
+    <script>
+        function createTree() {
+            let tree = "";
+            for (let i = 1; i <= 15; i++) {
+                let spaces = "&nbsp;".repeat(15 - i);
+                let stars = "*".repeat(i * 2 - 1);
+                tree += spaces + stars + "<br>";
+            }
+            tree += "&nbsp;".repeat(13) + "###";
+            document.getElementById("tree").innerHTML = tree;
+        }
+        createTree();
+    </script>
+</body>
+</html>
