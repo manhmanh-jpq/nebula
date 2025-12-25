@@ -2,33 +2,26 @@
 <html lang="vi">
 <head>
     <meta charset="utf-8">
-    <title>Nebula Studio - Bấy Bề Edition</title>
+    <title>Nebula Studio - Bấy Bề Đẳng Cấp Final</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #webcam-container { position: absolute; top: 15px; right: 15px; width: 180px; height: 135px; border: 2px solid #ff4757; border-radius: 12px; overflow: hidden; z-index: 100; box-shadow: 0 0 15px rgba(255, 71, 87, 0.5); }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        #webcam-container { position: absolute; top: 15px; right: 15px; width: 180px; height: 135px; border: 2px solid #ff4757; border-radius: 12px; overflow: hidden; z-index: 100; box-shadow: 0 0 15px #ff4757; }
         #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         
         .controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 100; width: max-content; }
-        
-        .btn { 
-            padding: 15px 25px; border-radius: 50px; border: none; cursor: pointer; 
-            font-weight: bold; font-size: 14px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
-        
-        .btn-photo { background: linear-gradient(45deg, #00ffff, #0099ff); color: #000; }
-        .btn-video { background: linear-gradient(45deg, #ff4757, #ff6b81); color: white; }
-        .btn:hover { transform: scale(1.1) translateY(-5px); filter: brightness(1.2); }
-        .btn:active { transform: scale(0.95); }
+        .btn { padding: 15px 25px; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .btn-photo { background: #00ffff; color: #000; }
+        .btn-video { background: #ff4757; color: white; }
+        .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
 
         #core-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: #fff; font-size: 32px; font-weight: 900; text-align: center;
             text-shadow: 0 0 20px #0ff, 0 0 40px #0ff; opacity: 0; z-index: 1; pointer-events: none;
-            transition: all 0.5s ease; letter-spacing: 2px; line-height: 1.4;
+            transition: all 0.3s ease-out;
         }
     </style>
 </head>
@@ -38,24 +31,24 @@
     
     <div class="controls">
         <button class="btn btn-photo" onclick="takePhoto()">
-            <span>📷</span> BẤY BỀ ẤN VÀO ĐÂY ĐỂ SELFI NHÓO
+            📷 BẤY BỀ ẤN VÀO ĐÂY ĐỂ SELFI NHÓO
         </button>
         <button class="btn btn-video" id="recBtn" onclick="toggleRecord()">
-            <span>📹</span> ẤN VÀO ĐÂY SẼ QUAY ĐƯỢC VIDEO KÈM MIC ĐÓO
+            📹 ẤN VÀO ĐÂY SẼ QUAY ĐƯỢC VIDEO KÈM MIC ĐÓO
         </button>
     </div>
 
     <script>
         let scene, camera, renderer, points, spherePos, treePos, mediaRecorder, recordedChunks = [];
         let expansion = 0, targetExpansion = 0, audioCtx, oscillator, gainNode;
-        const count = 25000; 
+        const count = 25000;
 
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 oscillator = audioCtx.createOscillator();
                 gainNode = audioCtx.createGain();
-                oscillator.type = 'sawtooth'; // Tiếng sci-fi dày hơn
+                oscillator.type = 'sine';
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
@@ -78,19 +71,19 @@
             treePos = new Float32Array(count * 3);
 
             for(let i=0; i<count; i++) {
-                // Quả cầu
+                
                 const u = Math.random(), v = Math.random();
                 const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1);
-                spherePos[i*3] = Math.sin(phi) * Math.cos(theta) * 1.6;
-                spherePos[i*3+1] = Math.sin(phi) * Math.sin(theta) * 1.6;
-                spherePos[i*3+2] = Math.cos(phi) * 1.6;
+                spherePos[i*3] = Math.sin(phi) * Math.cos(theta) * 1.5;
+                spherePos[i*3+1] = Math.sin(phi) * Math.sin(theta) * 1.5;
+                spherePos[i*3+2] = Math.cos(phi) * 1.5;
 
-                // Cây thông lõi rỗng
-                const h = Math.random() * 5 - 2.5; 
-                const radius = (2.5 - h) * 0.7 + 0.8; // Lõi rỗng hơn để thấy rõ chữ
+                const section = Math.floor(Math.random() * 5); 
+                const h = (Math.random() * 0.8) + (section * 0.7) - 2; 
+                const radius = (4 - section * 0.7) * 0.35 + 0.7;
                 const angle = Math.random() * Math.PI * 2;
                 treePos[i*3] = Math.cos(angle) * radius;
-                treePos[i*3+1] = h;
+                treePos[i*3+1] = h * 1.6;
                 treePos[i*3+2] = Math.sin(angle) * radius;
 
                 const color = new THREE.Color();
@@ -107,83 +100,3 @@
         hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5 });
         hands.onResults((results) => {
             if (results.multiHandLandmarks && results.multiHandLandmarks.length === 2) {
-                const h1 = results.multiHandLandmarks[0][9], h2 = results.multiHandLandmarks[1][9];
-                const d = Math.sqrt(Math.pow(h1.x-h2.x, 2) + Math.pow(h1.y-h2.y, 2));
-                targetExpansion = Math.min(1, Math.max(0, (d - 0.22) * 1.6));
-                if(audioCtx) {
-                    gainNode.gain.setTargetAtTime(0.08, audioCtx.currentTime, 0.1);
-                    oscillator.frequency.setTargetAtTime(150 + targetExpansion * 500, audioCtx.currentTime, 0.1);
-                }
-            } else { 
-                targetExpansion = 0; 
-                if(audioCtx) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
-            }
-        });
-
-        new Camera(document.getElementById('webcam'), {
-            onFrame: async () => { await hands.send({image: document.getElementById('webcam')}); },
-            width: 640, height: 480
-        }).start();
-
-        function animate() {
-            expansion += (targetExpansion - expansion) * 0.04; // Độ "lì" chuyển động
-            const pos = points.geometry.attributes.position.array;
-            const textEl = document.getElementById('core-text');
-            
-            if (expansion > 0.55) {
-                textEl.style.opacity = (expansion - 0.55) * 2.2;
-                textEl.style.transform = `translate(-50%, -50%) scale(${0.6 + expansion * 0.4})`;
-            } else { textEl.style.opacity = 0; }
-
-            for(let i=0; i<count; i++) {
-                const noise = (Math.random() - 0.5) * 0.07;
-                pos[i*3] = THREE.MathUtils.lerp(spherePos[i*3], treePos[i*3], expansion) + noise;
-                pos[i*3+1] = THREE.MathUtils.lerp(spherePos[i*3+1], treePos[i*3+1], expansion) + noise;
-                pos[i*3+2] = THREE.MathUtils.lerp(spherePos[i*3+2], treePos[i*3+2], expansion) + noise;
-            }
-            points.geometry.attributes.position.needsUpdate = true;
-            points.rotation.y += 0.002 + expansion * 0.012;
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        }
-
-        function takePhoto() {
-            const link = document.createElement('a');
-            link.download = 'dang-cap-selfie.png';
-            link.href = renderer.domElement.toDataURL('image/png');
-            link.click();
-        }
-
-        async function toggleRecord() {
-            initAudio();
-            const btn = document.getElementById('recBtn');
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                btn.innerHTML = "<span>📹</span> ẤN VÀO ĐÂY SẼ QUAY ĐƯỢC VIDEO KÈM MIC ĐÓO";
-                btn.style.background = "linear-gradient(45deg, #ff4757, #ff6b81)";
-            } else {
-                const stream = renderer.domElement.captureStream(30);
-                try {
-                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    micStream.getAudioTracks().forEach(track => stream.addTrack(track));
-                } catch(e) { alert("Bấy bề ơi, bật mic lên thì quay mới có tiếng nhó!"); }
-                
-                recordedChunks = [];
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob); a.download = 'video-dang-cap.webm'; a.click();
-                };
-                mediaRecorder.start();
-                btn.innerHTML = "<span>⏹</span> ĐANG QUAY RỒI NHÓ BẤY BỀ...";
-                btn.style.background = "#2ed573";
-            }
-        }
-
-        document.body.onclick = () => { initAudio(); };
-        initThree(); animate();
-    </script>
-</body>
-</html>
