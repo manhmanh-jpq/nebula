@@ -13,14 +13,17 @@
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #video-container { position: absolute; width: 100%; height: 100%; z-index: 0; opacity: 0.3; transform: scaleX(-1); display: none; }
         
+        /* Chú thích tính năng hiện đại */
         #help-panel { position: absolute; top: 20px; left: 20px; z-index: 20; background: rgba(0,0,0,0.85); border-left: 4px solid #ff0000; padding: 20px; border-radius: 8px; color: white; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .help-title { color: #ff0000; font-weight: bold; margin-bottom: 12px; font-size: 16px; text-transform: uppercase; }
         .help-item { margin-bottom: 10px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
 
+        /* Giao diện điều khiển */
         #ui-layer { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 20px; }
         .btn { background: linear-gradient(135deg, #ff4757, #ff6b81); border: none; color: white; padding: 15px 25px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: bold; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); transition: 0.3s; }
         .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
 
+        /* Color Picker chuyên nghiệp */
         #color-picker { position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(255,255,255,0.05); backdrop-filter: blur(15px); padding: 15px; border-radius: 20px; color: white; border: 1px solid rgba(255,255,255,0.1); }
         .cp-row { margin: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; }
         input[type="color"] { border: none; width: 28px; height: 28px; cursor: pointer; background: none; border-radius: 50%; }
@@ -65,4 +68,195 @@
     </div>
 
     <div id="modal">
-        <div style="
+        <div style="background:#1a1a1a; padding:40px; border-radius:30px; text-align:center; border:1px solid #333;">
+            <h3 style="color:white; margin-bottom:30px;">CHỌN CHẾ ĐỘ QUAY</h3>
+            <button class="btn" style="width:100%; margin-bottom:15px;" onclick="startRec(true)">QUAY KÈM MẶT</button>
+            <button class="btn" style="width:100%; margin-bottom:15px; background: #333;" onclick="startRec(false)">CHỈ QUAY CÂY THÔNG</button>
+            <button class="btn" style="width:100%; background:transparent;" onclick="hideModal()">HỦY</button>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, particleSystem, particles;
+        const pCount = 18000;
+        let zoom = 1, targetRotY = 0, isHeart = false;
+        let mediaRecorder, chunks = [];
+        
+        // Tạo texture hạt hình cầu mượt mà
+        function createCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 64, 64);
+            const texture = new THREE.Texture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 1, 3000);
+            camera.position.z = 700;
+            renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            particles = new THREE.BufferGeometry();
+            const pos = new Float32Array(pCount * 3);
+            const cols = new Float32Array(pCount * 3);
+            particles.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+
+            const mat = new THREE.PointsMaterial({
+                size: 4.5,
+                vertexColors: true,
+                transparent: true,
+                map: createCircleTexture(),
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            particleSystem = new THREE.Points(particles, mat);
+            scene.add(particleSystem);
+            updateStructure();
+            animate();
+        }
+
+        function updateStructure() {
+            const pos = particles.attributes.position.array;
+            const cols = particles.attributes.color.array;
+            const cPick = [document.getElementById('c1').value, document.getElementById('c2').value, document.getElementById('c3').value, document.getElementById('c4').value, document.getElementById('c5').value];
+            const starC = new THREE.Color(document.getElementById('cStar').value);
+            const trunkC = new THREE.Color(document.getElementById('cTrunk').value);
+
+            for(let i=0; i<pCount; i++) {
+                let x,y,z, c;
+                if(isHeart) {
+                    // Tạo khối trái tim 3D hoàn chỉnh (công thức parametric)
+                    const u = Math.random() * Math.PI * 2;
+                    const v = Math.random() * Math.PI * 2;
+                    x = 16 * Math.pow(Math.sin(u), 3) * Math.sin(v) * 15;
+                    y = (13 * Math.cos(u) - 5 * Math.cos(2*u) - 2 * Math.cos(3*u) - Math.cos(4*u)) * Math.sin(v) * 15;
+                    z = 10 * Math.cos(v) * 15;
+                    c = new THREE.Color('#ff0000');
+                } else {
+                    const rnd = Math.random();
+                    if(rnd > 0.12) { // 5 tầng lá
+                        const tier = Math.floor(Math.random()*5);
+                        const h = -120 + (tier * 70) + Math.random() * 70;
+                        const r = (320 - (h+120)) * 0.45 * Math.random();
+                        const a = Math.random() * Math.PI * 2;
+                        x = Math.cos(a) * r; y = h; z = Math.sin(a) * r;
+                        c = new THREE.Color(cPick[tier]);
+                    } else if (rnd > 0.02) { // Gốc
+                        x = (Math.random()-0.5)*40; y = Math.random()*-100 - 220; z = (Math.random()-0.5)*40;
+                        c = trunkC;
+                    } else { // Ngôi sao
+                        const a = Math.random() * Math.PI * 2;
+                        const r = Math.random() * 25;
+                        x = Math.cos(a) * r; y = 250 + Math.random()*30; z = Math.sin(a) * r;
+                        c = starC;
+                    }
+                }
+                pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
+                cols[i*3]=c.r; cols[i*3+1]=c.g; cols[i*3+2]=c.b;
+            }
+            particles.attributes.position.needsUpdate = true;
+            particles.attributes.color.needsUpdate = true;
+        }
+
+        function updateColors() { if(!isHeart) updateStructure(); }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            particleSystem.rotation.y += (targetRotY - particleSystem.rotation.y) * 0.08;
+            
+            const targetZ = 700 - (zoom - 1) * 1400;
+            camera.position.z += (targetZ - camera.position.z) * 0.1;
+
+            document.getElementById('msg-xmas').style.opacity = (camera.position.z < 0 && !isHeart) ? 1 : 0;
+            document.getElementById('msg-no-gift').style.opacity = isHeart ? 1 : 0;
+
+            if(isHeart) {
+                particleSystem.rotation.y += 0.02;
+                // Hiệu ứng đập của trái tim
+                const scale = 1 + Math.sin(Date.now()*0.005)*0.05;
+                particleSystem.scale.set(scale, scale, scale);
+            } else {
+                particleSystem.scale.set(1, 1, 1);
+            }
+            renderer.render(scene, camera);
+        }
+
+        async function setupMediapipe() {
+            const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+            hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7});
+            hands.onResults(res => {
+                if(res.multiHandLandmarks.length === 1) {
+                    // Xoay 360 độ mượt mà
+                    targetRotY = (res.multiHandLandmarks[0][8].x - 0.5) * Math.PI * 2;
+                } else if(res.multiHandLandmarks.length === 2) {
+                    const h1 = res.multiHandLandmarks[0], h2 = res.multiHandLandmarks[1];
+                    // Phóng to / Thu nhỏ
+                    const dist = Math.hypot(h1[9].x - h2[9].x, h1[9].y - h2[9].y);
+                    zoom = Math.max(1, dist * 3.5);
+
+                    // Nhận diện trái tim (Đầu ngón cái và ngón trỏ của 2 tay chạm nhau)
+                    const dThumb = Math.hypot(h1[4].x - h2[4].x, h1[4].y - h2[4].y);
+                    const dIndex = Math.hypot(h1[8].x - h2[8].x, h1[8].y - h2[8].y);
+                    if(dThumb < 0.06 && dIndex < 0.06 && !isHeart) {
+                        isHeart = true; updateStructure();
+                        setTimeout(() => { isHeart = false; updateStructure(); }, 6000);
+                    }
+                }
+            });
+            const cam = new Camera(document.getElementById('webcam'), {
+                onFrame: async () => { await hands.send({image: document.getElementById('webcam')}); },
+                width: 1280, height: 720
+            });
+            cam.start();
+        }
+
+        function takePhoto() {
+            const link = document.createElement('a');
+            link.download = 'selfie_xmas_babe.png';
+            link.href = renderer.domElement.toDataURL();
+            link.click();
+        }
+
+        function showRecModal() { document.getElementById('modal').style.display='flex'; }
+        function hideModal() { document.getElementById('modal').style.display='none'; }
+
+        async function startRec(face) {
+            hideModal();
+            document.getElementById('video-container').style.display = face ? 'block' : 'none';
+            document.getElementById('rec-indicator').style.display = 'flex';
+            const stream = renderer.domElement.captureStream(30);
+            try {
+                const mic = await navigator.mediaDevices.getUserMedia({audio:true});
+                mic.getTracks().forEach(t => stream.addTrack(t));
+            } catch(e) {}
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, {type:'video/webm'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href=url; a.download='xmas_video.webm'; a.click();
+                chunks = []; document.getElementById('rec-indicator').style.display='none';
+            };
+            mediaRecorder.start();
+            setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 10000);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init(); setupMediapipe();
+    </script>
+</body>
+</html>
