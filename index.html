@@ -2,39 +2,50 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Xmas Pro - Final Polish</title>
+    <title>Xmas Perfected - Final Edition 2025</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        #canvas-container { position: absolute; width: 100%; height: 100%; }
+        #canvas-container { position: absolute; width: 100%; height: 100%; z-index: 1; }
+        
+        /* Chú thích góc trái trên */
         #instruction-fixed {
-            position: absolute; top: 20px; left: 20px; color: white; z-index: 100;
-            background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; border-left: 4px solid #00ff00;
+            position: absolute; top: 20px; left: 20px;
+            color: white; z-index: 100; pointer-events: none;
+            background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px;
+            border-left: 4px solid #00ff00;
         }
-        .hint-line { font-size: 15px; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
+        .hint-line { font-size: 14px; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
+
+        /* Bảng điều khiển màu sắc */
         #update-picker {
             position: absolute; top: 20px; right: 20px; background: rgba(20,20,20,0.9);
             padding: 15px; border-radius: 10px; border: 1px solid #444; color: white; width: 220px; z-index: 100;
         }
         .row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 12px; }
+        input[type="color"] { background: none; border: none; width: 40px; height: 20px; cursor: pointer; }
+
+        /* Camera nhỏ (PiP) */
         #pip-container { 
             position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; 
             border: 2px solid #fff; border-radius: 10px; overflow: hidden; z-index: 100;
         }
         #pip-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        
+        /* Thanh nút bấm */
         #bottom-bar {
             position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 100;
         }
-        .btn { background: white; color: black; padding: 12px 25px; border-radius: 30px; font-weight: 900; border: none; cursor: pointer; }
+        .btn { background: white; color: black; padding: 12px 25px; border-radius: 30px; font-weight: 900; border: none; cursor: pointer; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <div id="instruction-fixed">
-        <div class="hint-line" style="color: #00ff00;">● TAY TRÁI: Chụm/Xòe để ZOOM</div>
-        <div class="hint-line" style="color: #ff0000;">● TAY PHẢI: Di chuyển để XOAY 360°</div>
+        <div class="hint-line" style="color: #00ff00;">● TAY TRÁI: CHỤM/XÒE ĐỂ ZOOM</div>
+        <div class="hint-line" style="color: #ff0000;">● TAY PHẢI: DI CHUYỂN ĐỂ XOAY 360°</div>
     </div>
 
     <audio id="bg-music" loop>
@@ -44,8 +55,8 @@
     <div id="update-picker">
         <div style="font-weight:bold; margin-bottom:10px;">Cấu hình cây thông</div>
         <div class="row">Sao (Hạt bụi) <input type="color" id="c0" value="#ffffaa"></div>
-        <div class="row">Lá (Neon/Bụi) <input type="color" id="c1" value="#006400"></div>
-        <div class="row">Dây & Bóng đèn <input type="color" id="c6" value="#ffee00"></div>
+        <div class="row">Lá (10 tầng) <input type="color" id="c1" value="#006400"></div>
+        <div class="row">Dây & Đèn <input type="color" id="c6" value="#ffee00"></div>
         <div class="row">Gốc <input type="color" id="c7" value="#3d2b1f"></div>
     </div>
 
@@ -88,58 +99,55 @@
         while(treeGroup.children.length > 0) treeGroup.remove(treeGroup.children[0]);
         const cols = [0,1,6,7].map(i => document.getElementById('c'+i).value);
 
-        // 1. NGÔI SAO BẰNG HẠT BỤI
+        // 1. NGÔI SAO HẠT BỤI
         const starGeo = new THREE.BufferGeometry();
         const starPos = [];
-        for(let i=0; i<500; i++) {
-            const r = Math.random() * 30;
+        for(let i=0; i<600; i++) {
+            const r = Math.random() * 35;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
             starPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
         }
         starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-        starParticles = new THREE.Points(starGeo, new THREE.PointsMaterial({color: cols[0], size: 2.5, transparent: true}));
-        starParticles.position.y = 280;
+        starParticles = new THREE.Points(starGeo, new THREE.PointsMaterial({color: cols[0], size: 2, transparent: true}));
+        starParticles.position.y = 300;
         treeGroup.add(starParticles);
 
-        // 2. NHIỀU TẦNG LÁ (NEON + BỤI)
+        // 2. 10 TẦNG LÁ DÀY ĐẶC (NEON + BỤI)
         for(let i=0; i<10; i++) {
-            const r = 260 - i*25;
-            const y = -220 + i*60;
+            const r = 280 - i*25;
+            const y = -240 + i*60;
+            
             const cone = new THREE.LineSegments(
                 new THREE.EdgesGeometry(new THREE.ConeGeometry(r, 140, 10, 1, true)),
-                new THREE.LineBasicMaterial({color: cols[1], transparent: true, opacity: 0.4})
+                new THREE.LineBasicMaterial({color: cols[1], transparent: true, opacity: 0.3})
             );
             cone.position.y = y;
             treeGroup.add(cone);
 
             const pGeo = new THREE.BufferGeometry();
             const pPos = [];
-            for(let j=0; j<1200; j++) {
+            for(let j=0; j<1500; j++) {
                 const a = Math.random() * Math.PI * 2;
                 const rad = Math.random() * r;
-                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*20, Math.sin(a)*rad);
+                pPos.push(Math.cos(a)*rad, (Math.random()-0.5)*25, Math.sin(a)*rad);
             }
             pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pPos, 3));
-            treeGroup.add(new THREE.Points(pGeo, new THREE.PointsMaterial({color: cols[1], size: 1.8})));
+            treeGroup.add(new THREE.Points(pGeo, new THREE.PointsMaterial({color: cols[1], size: 1.5})));
         }
 
-        // 3. DÂY ĐÈN + BÓNG ĐÈN LED
+        // 3. DÂY ĐÈN & BÓNG ĐÈN LED
         const curvePoints = [];
         for(let i=0; i<=150; i++) {
-            const t = i/150; const a = t * Math.PI * 18; const rad = (1-t)*260;
-            curvePoints.push(new THREE.Vector3(Math.cos(a)*rad, -250 + t*510, Math.sin(a)*rad));
+            const t = i/150; const a = t * Math.PI * 18; const rad = (1-t)*280;
+            curvePoints.push(new THREE.Vector3(Math.cos(a)*rad, -260 + t*540, Math.sin(a)*rad));
         }
-        const curve = new THREE.CatmullRomCurve3(curvePoints);
-        const spiralGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(300));
-        // Dây đèn mờ
-        treeGroup.add(new THREE.Line(spiralGeo, new THREE.LineBasicMaterial({color: cols[2], transparent: true, opacity: 0.3})));
-        // Bóng đèn LED (Hạt lớn hơn)
+        const spiralGeo = new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(curvePoints).getPoints(350));
         treeGroup.add(new THREE.Points(spiralGeo, new THREE.PointsMaterial({color: cols[2], size: 5, blending: THREE.AdditiveBlending})));
 
-        // 4. GỐC CÂY
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(25, 30, 80), new THREE.MeshBasicMaterial({color: cols[3]}));
-        trunk.position.y = -280;
+        // 4. GỐC
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(25, 35, 100), new THREE.MeshBasicMaterial({color: cols[3]}));
+        trunk.position.y = -300;
         treeGroup.add(trunk);
     }
 
@@ -151,30 +159,25 @@
             ctx.font = `bold ${size}px Arial`; ctx.fillStyle = "white"; ctx.textAlign = "center";
             ctx.fillText(txt, 512, 128);
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(can), transparent: true, depthTest: false}));
-            sprite.scale.set(300, 75, 1); // THU NHỎ KÍCH THƯỚC CHỮ
+            sprite.scale.set(220, 55, 1); // THU NHỎ KÍCH THƯỚC CHỮ ĐỂ KHÔNG BỊ TRÀN
             return sprite;
         };
         
-        // Chữ chính ở lõi
-        const m1 = createT("Merry Christmas!", 70); m1.position.z = 20; textGroup.add(m1);
-        const m2 = createT("Tao chưa có quà", 70); m2.rotation.y = Math.PI; m2.position.z = -20; textGroup.add(m2);
+        const m1 = createT("Merry Christmas!", 75); m1.position.z = 25; textGroup.add(m1);
+        const m2 = createT("Tao chưa có quà", 75); m2.rotation.y = Math.PI; m2.position.z = -25; textGroup.add(m2);
 
-        // LỚP BỤI NGĂN CÁCH GIỮA 2 MẶT CHỮ
+        // VÁCH NGĂN HẠT BỤI GIỮA 2 MẶT CHỮ
         const dividerGeo = new THREE.BufferGeometry();
         const divPos = [];
-        for(let i=0; i<1000; i++) {
-            divPos.push((Math.random()-0.5)*300, (Math.random()-0.5)*150, (Math.random()-0.5)*5);
+        for(let i=0; i<1500; i++) {
+            divPos.push((Math.random()-0.5)*350, (Math.random()-0.5)*180, (Math.random()-0.5)*8);
         }
         dividerGeo.setAttribute('position', new THREE.Float32BufferAttribute(divPos, 3));
-        const divider = new THREE.Points(dividerGeo, new THREE.PointsMaterial({color: 0x555555, size: 1.5, transparent: true, opacity: 0.5}));
-        textGroup.add(divider);
+        textGroup.add(new THREE.Points(dividerGeo, new THREE.PointsMaterial({color: 0x444444, size: 1.2, transparent: true, opacity: 0.6})));
 
-        // Chú thích hướng dẫn xoay
-        secretHint = createT("lấy một bàn tay để xoay hình đi", 50);
-        secretHint.scale.set(250, 60, 1);
-        secretHint.position.y = -100;
-        secretHint.visible = false;
-        scene.add(secretHint);
+        secretHint = createT("Lấy tay PHẢI để xoay hình đi", 60);
+        secretHint.scale.set(200, 50, 1); secretHint.position.y = -80;
+        secretHint.visible = false; scene.add(secretHint);
     }
 
     function animate() {
@@ -190,16 +193,10 @@
         
         camera.position.z = 800 - (currentZoom - 1) * 1600;
 
-        // Lấp lánh ngôi sao hạt bụi
-        if(starParticles) starParticles.material.opacity = 0.5 + Math.sin(Date.now()*0.005)*0.5;
-
-        // Hiện chữ khi bay vào lõi
-        if (camera.position.z < 200) {
-            textGroup.visible = true;
-            secretHint.visible = true;
+        if (camera.position.z < 180) {
+            textGroup.visible = true; secretHint.visible = true;
         } else {
-            textGroup.visible = false;
-            secretHint.visible = false;
+            textGroup.visible = false; secretHint.visible = false;
         }
 
         renderer.render(scene, camera);
@@ -215,11 +212,13 @@
                 res.multiHandLandmarks.forEach((landmarks, index) => {
                     const isRightHand = res.multiHandedness[index].label === "Right";
                     if (isRightHand) { 
-                        rotYTarget = (landmarks[9].x - 0.5) * Math.PI * 3;
+                        // TAY PHẢI XOAY 360
+                        rotYTarget = (landmarks[9].x - 0.5) * Math.PI * 3.5;
                         rotXTarget = (landmarks[9].y - 0.5) * Math.PI;
                     } else {
+                        // TAY TRÁI ZOOM
                         const d = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y);
-                        zoomTarget = d * 5.5; 
+                        zoomTarget = d * 5.8; 
                         if(zoomTarget < 0.6) zoomTarget = 0.6;
                     }
                 });
@@ -233,7 +232,7 @@
     function capture() {
         const link = document.createElement('a');
         link.href = renderer.domElement.toDataURL();
-        link.download = 'Xmas_Final.png'; link.click();
+        link.download = 'Xmas_Final_2025.png'; link.click();
     }
     document.querySelectorAll('input').forEach(i => i.onchange = createAdvancedTree);
     init();
